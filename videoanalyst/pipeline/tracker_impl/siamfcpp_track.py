@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*
 
 from copy import deepcopy
-
+import os
 import numpy as np
 
 import torch
@@ -85,6 +85,13 @@ class SiamFCppTracker(PipelineBase):
         self.debug = False
         self.set_model(self._model)
 
+        """START：读入扰动"""
+        loop_num = 512
+        uap_root = '/tmp/uap'
+        self.uap_x = torch.load(os.path.join(uap_root, 'x_{}'.format(loop_num)), map_location='cpu')
+        self.uap_z = torch.load(os.path.join(uap_root, 'z_{}'.format(loop_num)), map_location='cpu')
+        """END：读入扰动"""
+
     def set_model(self, model):
         """model to be set to pipeline. change device & turn it into eval mode
         
@@ -147,6 +154,11 @@ class SiamFCppTracker(PipelineBase):
         phase = self._hyper_params['phase_init']
         with torch.no_grad():
             data = imarray_to_tensor(im_z_crop).to(self.device)
+
+            """START：添加扰动"""
+            data += self.uap_z.to(self.device)
+            """END：添加扰动"""
+
             features = self._model(data, phase=phase)
 
         return features, im_z_crop, avg_chans
@@ -219,9 +231,15 @@ class SiamFCppTracker(PipelineBase):
             func_get_subwindow=get_subwindow_tracking,
         )
         self._state["scale_x"] = deepcopy(scale_x)
+
+        """START：添加扰动"""
+        data = imarray_to_tensor(im_x_crop).to(self.device)
+        data += self.uap_x.to(self.device)
+        """END：添加扰动"""
+
         with torch.no_grad():
             score, box, cls, ctr, extra = self._model(
-                imarray_to_tensor(im_x_crop).to(self.device),
+                data,
                 *features,
                 phase=phase_track)
         if self._hyper_params["corr_fea_output"]:
