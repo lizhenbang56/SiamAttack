@@ -79,8 +79,8 @@ train:
         name: "DenseboxHead"
         DenseboxHead:
           total_stride: 8
-          score_size: 17
-          x_size: 289
+          score_size: 19
+          x_size: 303
           num_conv3x3: 2
           head_conv_bn: [False, False]
       task_model:
@@ -128,13 +128,13 @@ train:
         RandomCropTransformer:
           max_scale: 0.3
           max_shift: 0.4
-          x_size: 289
+          x_size: 303
       target:
         name: "DenseboxTarget"
         DenseboxTarget:
           total_stride: 8
-          score_size: 17
-          x_size: 289
+          score_size: 19
+          x_size: 303
           num_conv3x3: 2
     trainer:
       name: "RegularTrainer"

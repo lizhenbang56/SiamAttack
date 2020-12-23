@@ -4,6 +4,7 @@ from typing import Dict
 
 from ..target_base import TRACK_TARGETS, TargetBase
 from .utils import make_densebox_target
+from videoanalyst.pipeline.utils import cxywh2xyxy
 
 
 @TRACK_TARGETS.register
@@ -36,12 +37,27 @@ class DenseboxTarget(TargetBase):
             (hps['score_size'] - 1) * hps['total_stride']) // 2
         self._hyper_params = hps
 
+        """START：生成 fake_gt_xyxy_in_search_img"""
+        fake_gt_w = 64
+        fake_gt_h = 64
+        fake_gt_cx = hps['x_size'] / 2 - 8
+        fake_gt_cy = hps['x_size'] / 2
+        self.fake_gt_xyxy_in_search_img = \
+            cxywh2xyxy([fake_gt_cx, fake_gt_cy, fake_gt_w, fake_gt_h])
+        """END：生成 fake_gt_xyxy_in_search_img"""
+
+        return
+
     def __call__(self, sampled_data: Dict) -> Dict:
         data_z = sampled_data["data1"]
-        im_z, bbox_z = data_z["image"], data_z["anno"]
+        im_z, bbox_z = data_z["image"], data_z["anno"]  # xyxy
 
         data_x = sampled_data["data2"]
-        im_x, bbox_x = data_x["image"], data_x["anno"]
+        im_x, bbox_x = data_x["image"], data_x["anno"]  # xyxy
+
+        """START：采用 fake_gt_xyxy_in_search_img"""
+        bbox_x = self.fake_gt_xyxy_in_search_img  # xyxy
+        """END：采用 fake_gt_xyxy_in_search_img"""
 
         is_negative_pair = sampled_data["is_negative_pair"]
 
@@ -59,8 +75,8 @@ class DenseboxTarget(TargetBase):
         training_data = dict(
             im_z=im_z,
             im_x=im_x,
-            bbox_z=bbox_z,
-            bbox_x=bbox_x,
+            bbox_z=bbox_z,  # xyxy
+            bbox_x=bbox_x,  # xyxy
             cls_gt=cls_label,
             ctr_gt=ctr_label,
             box_gt=box_label,
