@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*
 import time
 from typing import List
-
+import os
 # from PIL import Image
 import cv2
 import numpy as np
 
 from videoanalyst.evaluation.got_benchmark.utils.viz import show_frame
 from videoanalyst.pipeline.pipeline_base import PipelineBase
+from videoanalyst.utils.visualize_inference import visualize_search_img, visualize_template_img, visualize_cls_map
 
 
 class PipelineTracker(object):
@@ -76,15 +77,20 @@ class PipelineTracker(object):
         [type]
             [description]
         """
+        """START：读入补丁的真实位置"""
+        video_name = img_files[0].split('/')[-2]
+        patch_annos_path = os.path.join(
+            '/home/etvuz/projects/adversarial_attack/patch_anno/{}.txt'.format(video_name))
+        patch_annos = np.loadtxt(patch_annos_path, delimiter=',')
+        """END：读入补丁的真实位置"""
+
         frame_num = len(img_files)
         boxes = np.zeros((frame_num, 4))
         boxes[0] = box
         times = np.zeros(frame_num)
 
         for f, img_file in enumerate(img_files):
-            # image = Image.open(img_file)
-            # if not image.mode == 'RGB':
-            #     image = image.convert('RGB')
+            self.pipeline._model.patch_gt_xywh_ori = patch_annos[f]
             image = cv2.imread(img_file, cv2.IMREAD_COLOR)
 
             start_time = time.time()
@@ -92,6 +98,16 @@ class PipelineTracker(object):
                 self.init(image, box)
             else:
                 boxes[f, :] = self.update(image)
+
+                """START：可视化模板/搜索图像"""
+                visualize_flag = True
+                if visualize_flag:
+                    visualize_search_img(self.pipeline._state['adv_search_img'],
+                                         self.pipeline._state['best_box_xyxy_in_search_img'])
+                    visualize_template_img(self.pipeline._state['adv_template_img'])
+                    visualize_cls_map(self.pipeline._state['cls_pred'])
+                """END：可视化模板/搜索图像"""
+
             times[f] = time.time() - start_time
 
             if visualize:

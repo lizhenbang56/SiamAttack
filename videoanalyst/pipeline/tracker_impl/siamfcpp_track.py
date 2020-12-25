@@ -10,7 +10,26 @@ from videoanalyst.pipeline.pipeline_base import TRACK_PIPELINES, PipelineBase
 from videoanalyst.pipeline.utils import (cxywh2xywh, get_crop,
                                          get_subwindow_tracking,
                                          imarray_to_tensor, tensor_to_numpy,
-                                         xywh2cxywh, xyxy2cxywh)
+                                         xywh2cxywh, xyxy2cxywh, xyxy2xywh)
+
+
+def _point_from_orginal_img_to_search_img(point_in_original_img,
+                                          target_pos,
+                                          scale_x, x_size):
+    """
+    :param point: 原始图像中的一个点
+    :type point:
+    :param target_pos: 以该点为中心裁剪搜索图像。
+    :type target_pos:
+    :return:
+    :rtype:
+    """
+    def _coordinate_from_orginal_img_to_search_img(a, b):
+        return int((a + (x_size // 2) / scale_x - b) * np.float(scale_x))
+
+    x = _coordinate_from_orginal_img_to_search_img(point_in_original_img[0], target_pos[0])
+    y = _coordinate_from_orginal_img_to_search_img(point_in_original_img[1], target_pos[1])
+    return (x, y)
 
 
 # ============================== Tracker definition ============================== #
@@ -88,9 +107,13 @@ class SiamFCppTracker(PipelineBase):
         """START：读入扰动"""
         loop_num = 512
         uap_root = '/tmp/uap'
-        self.uap_x = torch.load(os.path.join(uap_root, 'x_{}'.format(loop_num)), map_location='cpu')
-        self.uap_z = torch.load(os.path.join(uap_root, 'z_{}'.format(loop_num)), map_location='cpu')
+        uap_x_path = os.path.join(uap_root, 'x_{}'.format(loop_num))
+        uap_z_path = os.path.join(uap_root, 'z_{}'.format(loop_num))
+        self.uap_x = torch.load(uap_x_path, map_location='cpu')
+        self.uap_z = torch.load(uap_z_path, map_location='cpu')
+        print('loading: ', uap_x_path, uap_z_path)
         """END：读入扰动"""
+        return
 
     def set_model(self, model):
         """model to be set to pipeline. change device & turn it into eval mode
@@ -158,6 +181,10 @@ class SiamFCppTracker(PipelineBase):
             """START：添加扰动"""
             data += self.uap_z.to(self.device)
             """END：添加扰动"""
+
+            """START：保存模板图像"""
+            self._state['adv_template_img'] = np.ascontiguousarray(data[0].cpu().numpy().transpose(1,2,0).astype(np.uint8))
+            """END：保存模板图像"""
 
             features = self._model(data, phase=phase)
 
@@ -232,8 +259,23 @@ class SiamFCppTracker(PipelineBase):
         )
         self._state["scale_x"] = deepcopy(scale_x)
 
+        """START：得到补丁相对于搜索图像的位置"""
+        patch_gt_x1_ori, patch_gt_y1_ori, patch_gt_w_ori, patch_gt_h_ori = self._model.patch_gt_xywh_ori
+        patch_gt_x2_ori = patch_gt_x1_ori + patch_gt_w_ori
+        patch_gt_y2_ori = patch_gt_y1_ori + patch_gt_h_ori
+        x1, y1 = _point_from_orginal_img_to_search_img([patch_gt_x1_ori, patch_gt_y1_ori], target_pos, scale_x, x_size)
+        x2, y2 = _point_from_orginal_img_to_search_img([patch_gt_x2_ori, patch_gt_y2_ori], target_pos, scale_x, x_size)
+        """START：得到补丁相对于搜索图像的位置"""
+
+        """START：在搜索图像添加均值补丁"""
+        data = imarray_to_tensor(im_x_crop).to(self.device)  # [1,3,h,w]
+        try:
+            data[0, :, y1:y2, x1:x2] = (255.0 * torch.ones((y2 - y1, x2 - x1))).to(self.device)
+        except Exception as e:
+            print('bad prediction')
+        """END：在搜索图像添加均值补丁"""
+
         """START：添加扰动"""
-        data = imarray_to_tensor(im_x_crop).to(self.device)
         data += self.uap_x.to(self.device)
         """END：添加扰动"""
 
@@ -277,6 +319,9 @@ class SiamFCppTracker(PipelineBase):
             self._state['all_box'] = box
             self._state['cls'] = cls
             self._state['ctr'] = ctr
+            self._state['adv_search_img'] = np.ascontiguousarray(data[0].cpu().numpy().transpose(1,2,0).astype(np.uint8))
+            self._state['best_box_xyxy_in_search_img'] = box[best_pscore_id]
+            self._state['cls_pred'] = cls[:,0]
 
         return new_target_pos, new_target_sz
 

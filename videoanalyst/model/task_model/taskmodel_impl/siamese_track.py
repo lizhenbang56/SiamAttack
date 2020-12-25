@@ -75,9 +75,9 @@ class SiamTrack(ModuleBase):
         fcos_cls_score_final, fcos_ctr_score_final, fcos_bbox_final, corr_fea = self.head(
             c_out, r_out)
         predict_data = dict(
-            cls_pred=fcos_cls_score_final,
-            ctr_pred=fcos_ctr_score_final,
-            box_pred=fcos_bbox_final,
+            cls_pred=fcos_cls_score_final,  # [batch, 361, 1]
+            ctr_pred=fcos_ctr_score_final,  # [batch, 361, 1]
+            box_pred=fcos_bbox_final,  # [batch, 361, 4]
         )
         if self._hyper_params["corr_fea_output"]:
             predict_data["corr_fea"] = corr_fea

@@ -40,6 +40,8 @@ def make_parser():
         '--resume',
         default="",
         help=r"completed epoch's number, latest or one model path")
+    parser.add_argument('--signal_img_debug', default=False, type=bool)
+    parser.add_argument('--uap_resume', default=False, type=bool)
 
     return parser
 
@@ -102,10 +104,25 @@ if __name__ == '__main__':
                                    dataloader)
     trainer.set_device(devs)
     trainer.resume(parsed_args.resume)
-    # trainer.init_train()
+    trainer.init_train()
+
+    """START：声明通用扰动"""
+    if not parsed_args.uap_resume:
+        uap_x = None
+        uap_z = None
+    else:
+        uap_num = 2048
+        uap_x_path = '/tmp/uap/x_{}'.format(uap_num)
+        uap_z_path = '/tmp/uap/z_{}'.format(uap_num)
+        uap_x = torch.load(uap_x_path)
+        uap_z = torch.load(uap_z_path)
+        print('load: ', uap_x_path, uap_z_path)
+    real_iter_num = 0
+    """END：声明通用扰动"""
+
     logger.info("Start training")
     while not trainer.is_completed():
-        trainer.train()
+        uap_x, uap_z, real_iter_num = trainer.train(uap_x, uap_z, real_iter_num, parsed_args.signal_img_debug, visualize=parsed_args.uap_resume)
         trainer.save_snapshot()
     # export final model
     trainer.save_snapshot(model_param_only=True)

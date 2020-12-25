@@ -10,6 +10,7 @@ from torch import nn
 
 from videoanalyst.utils import (Timer, ensure_dir, move_data_to_device,
                                 unwrap_model)
+from videoanalyst.utils.visualize_training import visualize_training, visualize_patched_img
 
 from ..trainer_base import TRACK_TRAINERS, TrainerBase
 
@@ -72,7 +73,7 @@ class RegularTrainer(TrainerBase):
         super(RegularTrainer, self).init_train()
         logger.info("{} initialized".format(type(self).__name__))
 
-    def train(self):
+    def train(self, uap_x, uap_z, real_iter_num, signal_img_debug, visualize):
         if not self._state["initialized"]:
             self.init_train()
         self._state["initialized"] = True
@@ -90,23 +91,30 @@ class RegularTrainer(TrainerBase):
         self._state["pbar"] = pbar
         self._state["print_str"] = ""
 
-
-        """START：设置是否进行单图 debug"""
-        signal_img_debug = False
-        """END：设置是否进行单图 debug"""
-
-        """START：声明通用扰动"""
-        uap_x = None
-        uap_z = None
-        training_data = None
-        """END：声明通用扰动"""
+        training_data_raw = None
 
         time_dict = OrderedDict()
         for iteration, _ in enumerate(pbar):
             self._state["iteration"] = iteration
             with Timer(name="data", output_dict=time_dict):
+
+                """START：获取 training data"""
+                if not signal_img_debug:
+                    if iteration == 0:
+                        training_data = next(self._dataloader)
+                        training_data_raw = training_data.copy()
+                    else:
+                        training_data = training_data_raw
+                else:
+                    training_data = next(self._dataloader)
+
+
                 if not signal_img_debug or training_data is None:
                     training_data = next(self._dataloader)
+                if signal_img_debug:
+                    training_data_raw = training_data.copy()
+                """END：获取 training data"""
+
             training_data = move_data_to_device(training_data,
                                                 self._state["devices"][0])
 
@@ -116,21 +124,29 @@ class RegularTrainer(TrainerBase):
             # forward propagation
             with Timer(name="fwd", output_dict=time_dict):
 
+                """START：在搜索图像添加均值补丁"""
+                for idx, xyxy in enumerate(training_data['bbox_x']):
+                    x1, y1, x2, y2 = [int(var) for var in xyxy]
+                    training_data['im_x'][idx, :, y1:y2, x1:x2] = (255.0*torch.ones((y2-y1,x2-x1))).to(self._state["devices"][0])
+                if visualize:
+                    visualize_patched_img(training_data['im_x'], name='patched_train_search')
+                """END：在搜索图像添加均值补丁"""
+
                 """START：初始化通用扰动"""
                 if uap_x is None:
                     uap_x = torch.zeros((1, 3, training_data['im_x'].shape[2], training_data['im_x'].shape[3])).to(self._state["devices"][0])
                     uap_z = torch.zeros((1, 3, training_data['im_z'].shape[2], training_data['im_z'].shape[3])).to(self._state["devices"][0])
+                else:
+                    uap_x = uap_x.to(self._state["devices"][0])
+                    uap_z = uap_z.to(self._state["devices"][0])
                 """END：初始化通用扰动"""
 
                 """START：将扰动叠加至输入图像"""
                 training_data['im_z'] = uap_z + training_data['im_z'].data
                 training_data['im_x'] = uap_x + training_data['im_x'].data
+                if visualize:
+                    visualize_patched_img(training_data['im_x'], name='adv_train_search')
                 """END：将扰动叠加至输入图像"""
-
-                """START：限制图像值在 0~255 之间"""
-                training_data['im_z'] = torch.clamp(training_data['im_z'], 0, 255)
-                training_data['im_x'] = torch.clamp(training_data['im_x'], 0, 255)
-                """END：限制图像值在 0~255 之间"""
 
                 """START：设置输入图像为可获取梯度"""
                 training_data['im_z'].requires_grad = True
@@ -138,8 +154,14 @@ class RegularTrainer(TrainerBase):
                 """END：设置输入图像为可获取梯度"""
 
                 """START：网络前向传播"""
+                self._model.eval()  # !!!非常重要。否则造成训练测试不一致。我们根本不训练网络。
                 predict_data = self._model(training_data)
                 """END：网络前向传播"""
+
+                """START：可视化训练数据"""
+                if visualize:
+                    visualize_training(training_data, predict_data)
+                """END：可视化训练数据"""
 
                 """START：计算损失"""
                 training_losses, extras = OrderedDict(), OrderedDict()
@@ -176,20 +198,31 @@ class RegularTrainer(TrainerBase):
 
             for monitor in self._monitors:
                 monitor.update(trainer_data)
+
             if not signal_img_debug:
                 del training_data
+
             print_str = self._state["print_str"]
             pbar.set_description(print_str)
 
             """START：保存扰动"""
-            save_dir = '/tmp/uap'
+            if signal_img_debug:
+                save_dir = '/tmp/uap_debug'
+            else:
+                save_dir = '/tmp/uap'
             if not os.path.exists(save_dir):
                 os.mkdir(save_dir)
-            real_iter_num = iteration + 1
+            real_iter_num += 1
             if real_iter_num & (real_iter_num - 1) == 0:
-                torch.save(uap_x, os.path.join(save_dir, 'x_{}'.format(real_iter_num)))
-                torch.save(uap_z, os.path.join(save_dir, 'z_{}'.format(real_iter_num)))
+                save_path_x = os.path.join(save_dir, 'x_{}'.format(real_iter_num))
+                save_path_z = os.path.join(save_dir, 'z_{}'.format(real_iter_num))
+                torch.save(uap_x, save_path_x)
+                torch.save(uap_z, save_path_z)
+                print(' save to: {} {}'.format(save_path_x, save_path_z))
             """END：保存扰动"""
+
+        return uap_x, uap_z, real_iter_num
+
 
 RegularTrainer.default_hyper_params = copy.deepcopy(
     RegularTrainer.default_hyper_params)

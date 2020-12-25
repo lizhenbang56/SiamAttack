@@ -29,8 +29,10 @@ class GOT10kTester(TesterBase):
     extra_hyper_params = dict(
         device_num=1,
         data_root="datasets/GOT-10k",
+        #data_root='/tmp/dummy',
         subsets=["val"],  # (val|test)
     )
+    #print('ERROR')
 
     def __init__(self, *args, **kwargs):
         super(GOT10kTester, self).__init__(*args, **kwargs)

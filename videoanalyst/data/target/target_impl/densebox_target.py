@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-
+import math
+import random
 from typing import Dict
 
 from ..target_base import TRACK_TARGETS, TargetBase
@@ -36,17 +37,30 @@ class DenseboxTarget(TargetBase):
             hps['x_size'] - 1 -
             (hps['score_size'] - 1) * hps['total_stride']) // 2
         self._hyper_params = hps
-
-        """START：生成 fake_gt_xyxy_in_search_img"""
-        fake_gt_w = 64
-        fake_gt_h = 64
-        fake_gt_cx = hps['x_size'] / 2 - 8
-        fake_gt_cy = hps['x_size'] / 2
-        self.fake_gt_xyxy_in_search_img = \
-            cxywh2xyxy([fake_gt_cx, fake_gt_cy, fake_gt_w, fake_gt_h])
-        """END：生成 fake_gt_xyxy_in_search_img"""
-
         return
+
+    def generate_fake_gt_xyxy_in_search_img(self):
+        """"""
+        """START：随机宽度/高度"""
+        # 希望宽高以 64 为中心，分布区间为 32~128。这个宽度范围应该能够保证 label 都能有意义。
+        fake_gt_w = 64 * math.pow(2, random.uniform(-1, 1))
+        fake_gt_h = 64 * math.pow(2, random.uniform(-1, 1))
+        """END：随机宽度/高度"""
+
+        """START：随机补丁的位置"""
+        # 希望补丁的中心点以搜索图像中心点为中心，均匀偏移±64像素。
+        fake_gt_cx = self._hyper_params['x_size'] / 2 + random.uniform(-64, 64)
+        fake_gt_cy = self._hyper_params['x_size'] / 2 + random.uniform(-64, 64)
+        """END：随机补丁的位置"""
+
+        fake_gt_cxywh_in_search_img = [fake_gt_cx, fake_gt_cy, fake_gt_w, fake_gt_h]
+        return cxywh2xyxy(fake_gt_cxywh_in_search_img)
+
+    def generate_fake_gt_xyxy_in_search_img_dummy(self):
+        """"""
+        print('ERROR')
+        import numpy as np
+        return np.array([38,73,114,125])
 
     def __call__(self, sampled_data: Dict) -> Dict:
         data_z = sampled_data["data1"]
@@ -55,9 +69,10 @@ class DenseboxTarget(TargetBase):
         data_x = sampled_data["data2"]
         im_x, bbox_x = data_x["image"], data_x["anno"]  # xyxy
 
-        """START：采用 fake_gt_xyxy_in_search_img"""
-        bbox_x = self.fake_gt_xyxy_in_search_img  # xyxy
-        """END：采用 fake_gt_xyxy_in_search_img"""
+        """START：生成 fake_gt_xyxy_in_search_img"""
+        fake_gt_xyxy_in_search_img = self.generate_fake_gt_xyxy_in_search_img()  # xyxy
+        bbox_x = fake_gt_xyxy_in_search_img  # xyxy
+        """END：生成 fake_gt_xyxy_in_search_img"""
 
         is_negative_pair = sampled_data["is_negative_pair"]
 

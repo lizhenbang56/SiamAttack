@@ -50,7 +50,7 @@ train:
   track:
     exp_name: &TRAIN_NAME "siamfcpp_googlenet-got"
     exp_save: &TRAIN_SAVE "snapshots"
-    num_processes: 4
+    num_processes: 1
     model:
       backbone:
         name: "Inception3"
@@ -92,9 +92,9 @@ train:
     data:
       exp_name: *TRAIN_NAME
       exp_save: *TRAIN_SAVE
-      num_epochs: &NUM_EPOCHS 20
-      minibatch: &MINIBATCH 128  # 256
-      num_workers: 32
+      num_epochs: &NUM_EPOCHS 40
+      minibatch: &MINIBATCH 32  # 256
+      num_workers: 4
       nr_image_per_epoch: &NR_IMAGE_PER_EPOCH 150000
       pin_memory: False
       datapipeline:
@@ -102,7 +102,7 @@ train:
       sampler:
         name: "TrackPairSampler"
         TrackPairSampler:
-          negative_pair_ratio: 0.33
+          negative_pair_ratio: 0.00
         submodules:
           dataset:
             names: ["GOT10kDataset",]  # (GOT10kDataset|LaSOTDataset)
@@ -141,7 +141,7 @@ train:
       RegularTrainer:
         exp_name: *TRAIN_NAME
         exp_save: *TRAIN_SAVE
-        max_epoch: *NUM_EPOCHS
+        max_epoch: 200
         minibatch: *MINIBATCH
         nr_image_per_epoch: *NR_IMAGE_PER_EPOCH
         snapshot: ""

@@ -162,12 +162,12 @@ def get_crop(im,
         im_crop, mask_crop = func_get_subwindow(im,
                                                 target_pos,
                                                 output_size,
-                                                round(s_crop),
+                                                s_crop,
                                                 avg_chans,
                                                 mask=mask)
         return im_crop, mask_crop, scale
     else:
-        im_crop = func_get_subwindow(im, target_pos, output_size, round(s_crop),
+        im_crop = func_get_subwindow(im, target_pos, output_size, s_crop,
                                      avg_chans)
         return im_crop, scale
 
