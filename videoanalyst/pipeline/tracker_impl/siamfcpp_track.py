@@ -107,11 +107,11 @@ class SiamFCppTracker(PipelineBase):
         """START：读入扰动"""
         loop_num = 512
         uap_root = '/tmp/uap'
-        uap_x_path = os.path.join(uap_root, 'x_{}'.format(loop_num))
+        patch_x_path = os.path.join(uap_root, 'x_{}'.format(loop_num))
         uap_z_path = os.path.join(uap_root, 'z_{}'.format(loop_num))
-        self.uap_x = torch.load(uap_x_path, map_location='cpu')
+        self.patch_x = torch.load(patch_x_path, map_location='cpu')
         self.uap_z = torch.load(uap_z_path, map_location='cpu')
-        print('loading: ', uap_x_path, uap_z_path)
+        print('loading: ', patch_x_path, uap_z_path)
         """END：读入扰动"""
         return
 
@@ -265,19 +265,22 @@ class SiamFCppTracker(PipelineBase):
         patch_gt_y2_ori = patch_gt_y1_ori + patch_gt_h_ori
         x1, y1 = _point_from_orginal_img_to_search_img([patch_gt_x1_ori, patch_gt_y1_ori], target_pos, scale_x, x_size)
         x2, y2 = _point_from_orginal_img_to_search_img([patch_gt_x2_ori, patch_gt_y2_ori], target_pos, scale_x, x_size)
+        cx = (x2 + x1) / 2
+        cy = (y2 + y1) / 2
+        patch_h, patch_w = self.patch_x.shape[2:]
+        xx1 = int(cx - patch_w / 2)
+        yy1 = int(cy - patch_h / 2)
+        xx2 = xx1 + patch_w
+        yy2 = yy1 + patch_h
         """START：得到补丁相对于搜索图像的位置"""
 
-        """START：在搜索图像添加均值补丁"""
+        """START：在搜索图像添加对抗补丁"""
         data = imarray_to_tensor(im_x_crop).to(self.device)  # [1,3,h,w]
         try:
-            data[0, :, y1:y2, x1:x2] = (255.0 * torch.ones((y2 - y1, x2 - x1))).to(self.device)
+            data[0, :, yy1:yy2, xx1:xx2] = self.patch_x.to(self.device)
         except Exception as e:
             print('bad prediction')
-        """END：在搜索图像添加均值补丁"""
-
-        """START：添加扰动"""
-        data += self.uap_x.to(self.device)
-        """END：添加扰动"""
+        """END：在搜索图像添加对抗补丁"""
 
         with torch.no_grad():
             score, box, cls, ctr, extra = self._model(

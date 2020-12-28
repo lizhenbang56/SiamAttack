@@ -21,6 +21,14 @@ def fgsm_attack(uap, data_grad, epsilon=0.5):
     return new_uap
 
 
+def get_patch_grad(tensor, pos, patch_w, patch_h):
+    grad = torch.zeros((1,3,patch_h,patch_w), device=tensor.device)
+    for t, p in zip(tensor, pos):
+        x1, y1, x2, y2 = p
+        grad += t[:, y1:y2, x1:x2]
+    return grad / tensor.shape[0]
+
+
 @TRACK_TRAINERS.register
 class RegularTrainer(TrainerBase):
     r"""
@@ -73,7 +81,7 @@ class RegularTrainer(TrainerBase):
         super(RegularTrainer, self).init_train()
         logger.info("{} initialized".format(type(self).__name__))
 
-    def train(self, uap_x, uap_z, real_iter_num, signal_img_debug, visualize):
+    def train(self, patch_x, uap_z, real_iter_num, signal_img_debug, visualize):
         if not self._state["initialized"]:
             self.init_train()
         self._state["initialized"] = True
@@ -124,20 +132,13 @@ class RegularTrainer(TrainerBase):
             # forward propagation
             with Timer(name="fwd", output_dict=time_dict):
 
-                """START：在搜索图像添加均值补丁"""
-                for idx, xyxy in enumerate(training_data['bbox_x']):
-                    x1, y1, x2, y2 = [int(var) for var in xyxy]
-                    training_data['im_x'][idx, :, y1:y2, x1:x2] = (255.0*torch.ones((y2-y1,x2-x1))).to(self._state["devices"][0])
-                if visualize:
-                    visualize_patched_img(training_data['im_x'], name='patched_train_search')
-                """END：在搜索图像添加均值补丁"""
-
                 """START：初始化通用扰动"""
-                if uap_x is None:
-                    uap_x = torch.zeros((1, 3, training_data['im_x'].shape[2], training_data['im_x'].shape[3])).to(self._state["devices"][0])
+                patch_w = patch_h = 64
+                if patch_x is None:
+                    patch_x = torch.normal(mean=(128.0*torch.ones(1,3,patch_h,patch_w))).to(self._state["devices"][0])
                     uap_z = torch.zeros((1, 3, training_data['im_z'].shape[2], training_data['im_z'].shape[3])).to(self._state["devices"][0])
                 else:
-                    uap_x = uap_x.to(self._state["devices"][0])
+                    patch_x = patch_x.to(self._state["devices"][0])
                     uap_z = uap_z.to(self._state["devices"][0])
                 """END：初始化通用扰动"""
 
@@ -168,9 +169,6 @@ class RegularTrainer(TrainerBase):
 
                 """START：将扰动叠加至输入图像"""
                 training_data['im_z'] = uap_z + training_data['im_z'].data
-                training_data['im_x'] = uap_x + training_data['im_x'].data
-                if visualize:
-                    visualize_patched_img(training_data['im_x'], name='adv_train_search')
                 """END：将扰动叠加至输入图像"""
 
                 """START：设置输入图像为可获取梯度"""
@@ -191,6 +189,8 @@ class RegularTrainer(TrainerBase):
                 """START：计算损失"""
                 training_losses, extras = OrderedDict(), OrderedDict()
                 for loss_name, loss in self._losses.items():
+                    if loss_name == 'reg':
+                        continue
                     training_losses[loss_name], extras[loss_name] = loss(
                         predict_data, training_data)
                 norm_x_loss = torch.mean((training_data['im_x'] - im_x_ori).pow(2))
@@ -208,11 +208,11 @@ class RegularTrainer(TrainerBase):
 
                 """START：收集相对于输入图像的梯度"""
                 im_z_grad = torch.mean(training_data['im_z'].grad.data, dim=0, keepdims=True)
-                im_x_grad = torch.mean(training_data['im_x'].grad.data, dim=0, keepdims=True)
+                patch_grad = get_patch_grad(training_data['im_x'].grad.data, patch_pos, patch_w, patch_h)
                 """END：收集相对于输入图像的梯度"""
 
                 """START：根据梯度得到新的扰动"""
-                uap_x = fgsm_attack(uap_x, im_x_grad)
+                patch_x = fgsm_attack(patch_x, patch_grad)
                 uap_z = fgsm_attack(uap_z, im_z_grad)
                 """END：根据梯度得到新的扰动"""
 
@@ -245,12 +245,12 @@ class RegularTrainer(TrainerBase):
             if real_iter_num & (real_iter_num - 1) == 0:
                 save_path_x = os.path.join(save_dir, 'x_{}'.format(real_iter_num))
                 save_path_z = os.path.join(save_dir, 'z_{}'.format(real_iter_num))
-                torch.save(uap_x, save_path_x)
+                torch.save(patch_x, save_path_x)
                 torch.save(uap_z, save_path_z)
                 print(' save to: {} {}'.format(save_path_x, save_path_z))
             """END：保存扰动"""
 
-        return uap_x, uap_z, real_iter_num
+        return patch_x, uap_z, real_iter_num
 
 
 RegularTrainer.default_hyper_params = copy.deepcopy(

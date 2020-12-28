@@ -108,7 +108,7 @@ if __name__ == '__main__':
 
     """START：声明通用扰动"""
     if not parsed_args.uap_resume:
-        uap_x = None
+        patch_x = None
         uap_z = None
     else:
         uap_num = 4096
@@ -122,7 +122,7 @@ if __name__ == '__main__':
 
     logger.info("Start training")
     while not trainer.is_completed():
-        uap_x, uap_z, real_iter_num = trainer.train(uap_x, uap_z, real_iter_num, parsed_args.signal_img_debug, visualize=parsed_args.uap_resume)
+        patch_x, uap_z, real_iter_num = trainer.train(patch_x, uap_z, real_iter_num, parsed_args.signal_img_debug, visualize=parsed_args.uap_resume)
         trainer.save_snapshot()
     # export final model
     trainer.save_snapshot(model_param_only=True)
