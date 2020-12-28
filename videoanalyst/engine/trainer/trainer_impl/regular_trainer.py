@@ -141,6 +141,31 @@ class RegularTrainer(TrainerBase):
                     uap_z = uap_z.to(self._state["devices"][0])
                 """END：初始化通用扰动"""
 
+                """START：备份干净图像"""
+                im_z_ori = copy.deepcopy(training_data['im_z'].data)
+                im_x_ori = copy.deepcopy(training_data['im_x'].data)
+                """END：备份干净图像"""
+
+                """START：在搜索图像添加补丁"""
+                patch_pos = []
+                for idx, xyxy in enumerate(training_data['bbox_x']):
+                    x1, y1, x2, y2 = [int(var) for var in xyxy]
+                    cx = (x2+x1)/2
+                    cy = (y2+y1)/2
+                    xx1 = int(cx-patch_w/2)
+                    yy1 = int(cy-patch_h/2)
+                    xx2 = xx1 + patch_w
+                    yy2 = yy1 + patch_h
+                    patch_pos.append([xx1, yy1, xx2, yy2])
+                    try:
+                        training_data['im_x'][idx, :, yy1:yy2, xx1:xx2] = patch_x.to(self._state["devices"][0])
+                    except:
+                        print("Error paste patch")
+                        continue
+                if visualize:
+                    visualize_patched_img(training_data['im_x'], name='patched_train_search')
+                """END：在搜索图像添加补丁"""
+
                 """START：将扰动叠加至输入图像"""
                 training_data['im_z'] = uap_z + training_data['im_z'].data
                 training_data['im_x'] = uap_x + training_data['im_x'].data
@@ -168,7 +193,9 @@ class RegularTrainer(TrainerBase):
                 for loss_name, loss in self._losses.items():
                     training_losses[loss_name], extras[loss_name] = loss(
                         predict_data, training_data)
-                total_loss = sum(training_losses.values())
+                norm_x_loss = torch.mean((training_data['im_x'] - im_x_ori).pow(2))
+                norm_z_loss = torch.mean((training_data['im_z'] - im_z_ori).pow(2))
+                total_loss = sum(training_losses.values()) + 0.00*(norm_x_loss + norm_z_loss)
                 """END：计算损失"""
 
                 """START：模型梯度清空"""
@@ -194,6 +221,8 @@ class RegularTrainer(TrainerBase):
                 training_losses=training_losses,
                 extras=extras,
                 time_dict=time_dict,
+                norm_x_loss=norm_x_loss.item(),
+                norm_z_loss=norm_z_loss.item(),
             )
 
             for monitor in self._monitors:

@@ -30,6 +30,13 @@ class TextInfo(MonitorBase):
     def update(self, engine_data: Dict):
         r"""
         """
+
+        """START：得到 L2 损失"""
+        print_str = ""
+        norm_x_loss = engine_data["norm_x_loss"]
+        norm_z_loss = engine_data["norm_z_loss"]
+        """END：得到 L2 损失"""
+
         # state
         engine_state = self._state["engine_state"]
         # data
@@ -39,13 +46,18 @@ class TextInfo(MonitorBase):
         time_dict = engine_data["time_dict"]
         # schedule information
         epoch = engine_state["epoch"]
-        print_str = 'epoch %d, ' % epoch
-        for k in schedule_info:
-            print_str += '%s: %.1e, ' % (k, schedule_info[k])
+        #print_str = 'epoch %d, ' % epoch
+        # for k in schedule_info:
+        #     print_str += '%s: %.1e, ' % (k, schedule_info[k])
         # loss info
         for k in training_losses:
             l = training_losses[k]
             print_str += '%s: %.3f, ' % (k, l.detach().cpu().numpy())
+
+        """START：打印 L2 损失"""
+        print_str += 'x: {:.2f}, z: {:.2f}, '.format(norm_x_loss, norm_z_loss)
+        """END：打印 L2 损失"""
+
         # extra info
         for extra in extras.values():
             #if extra:

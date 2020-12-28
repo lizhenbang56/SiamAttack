@@ -19,6 +19,7 @@ def visualize_search_img(adv_search_img, best_box_xyxy_in_search_img):
     assert adv_search_img.flags['C_CONTIGUOUS']
     adv_search_img = cv2.rectangle(adv_search_img, (x1, y1), (x2, y2), (0,0,255))
     save_path = '/tmp/adv_search_img.jpg'
+    print(save_path)
     assert cv2.imwrite(save_path, adv_search_img)
     return
 
@@ -36,5 +37,6 @@ def visualize_cls_map(cls_pred):
     cls_map = to_2d_map(cls_pred)
     cls_img = cv2.resize(cls_map, (search_img_size, search_img_size))
     save_path = '/tmp/cls_pred.jpg'
+    print(save_path)
     assert cv2.imwrite(save_path, cls_img)
     return

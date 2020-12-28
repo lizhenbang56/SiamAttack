@@ -111,10 +111,10 @@ if __name__ == '__main__':
         uap_x = None
         uap_z = None
     else:
-        uap_num = 2048
-        uap_x_path = '/tmp/uap/x_{}'.format(uap_num)
-        uap_z_path = '/tmp/uap/z_{}'.format(uap_num)
-        uap_x = torch.load(uap_x_path)
+        uap_num = 4096
+        uap_x_path = '/tmp/uap_v1.1/x_{}'.format(uap_num)
+        uap_z_path = '/tmp/uap_v1.1/z_{}'.format(uap_num)
+        patch_x = torch.load(uap_x_path)
         uap_z = torch.load(uap_z_path)
         print('load: ', uap_x_path, uap_z_path)
     real_iter_num = 0

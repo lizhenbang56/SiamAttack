@@ -1,5 +1,6 @@
 import os
 import glob
+import time
 import imageio
 import numpy as np
 from PIL import Image, ImageDraw
@@ -21,7 +22,8 @@ def visualize(pred, video_name, dataset_dir, overwrite):
         img_list.append(img)
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
-    file_path = os.path.join(save_dir, video_name + '.gif')
+    timestamp = time.strftime("%Y%m%d%H%M%S", time.localtime())
+    file_path = os.path.join(save_dir, video_name + '_{}'.format(timestamp) + '.gif')
     if os.path.isfile(file_path) and not overwrite:
         print('Already exists:', end=' ')
     else:
