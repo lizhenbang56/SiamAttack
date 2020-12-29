@@ -15,7 +15,7 @@ from videoanalyst.utils.visualize_training import visualize_training, visualize_
 from ..trainer_base import TRACK_TRAINERS, TrainerBase
 
 
-def fgsm_attack(uap, data_grad, epsilon=0.5):
+def fgsm_attack(uap, data_grad, epsilon):
     sign_data_grad = data_grad.sign()
     new_uap = uap - epsilon*sign_data_grad
     return new_uap
@@ -82,6 +82,16 @@ class RegularTrainer(TrainerBase):
         logger.info("{} initialized".format(type(self).__name__))
 
     def train(self, patch_x, uap_z, real_iter_num, signal_img_debug, visualize):
+        """"""
+        """START：设定参数"""
+        cls_weight = 2
+        ctr_weight = 0
+        reg_weight = 0
+        l2_z_weight = 0.001
+        lr = 0.5
+        print('cls_weight={}, ctr_weight={}, reg_weight={}, l2_z_weight={}, lr={}'.format(cls_weight, ctr_weight, reg_weight, l2_z_weight, lr))
+        """END：设定参数"""
+
         if not self._state["initialized"]:
             self.init_train()
         self._state["initialized"] = True
@@ -189,13 +199,18 @@ class RegularTrainer(TrainerBase):
                 """START：计算损失"""
                 training_losses, extras = OrderedDict(), OrderedDict()
                 for loss_name, loss in self._losses.items():
-                    if loss_name == 'reg':
-                        continue
                     training_losses[loss_name], extras[loss_name] = loss(
                         predict_data, training_data)
                 norm_x_loss = torch.mean((training_data['im_x'] - im_x_ori).pow(2))
                 norm_z_loss = torch.mean((training_data['im_z'] - im_z_ori).pow(2))
-                total_loss = sum(training_losses.values()) + 0.00*(norm_x_loss + norm_z_loss)
+                cls_loss = training_losses['cls']
+                ctr_loss = training_losses['ctr']
+                reg_loss = training_losses['reg']
+                total_loss = cls_weight*cls_loss + \
+                             ctr_weight*ctr_loss + \
+                             reg_weight*reg_loss + \
+                             l2_z_weight*norm_z_loss + \
+                             0*norm_x_loss
                 """END：计算损失"""
 
                 """START：模型梯度清空"""
@@ -212,8 +227,8 @@ class RegularTrainer(TrainerBase):
                 """END：收集相对于输入图像的梯度"""
 
                 """START：根据梯度得到新的扰动"""
-                patch_x = fgsm_attack(patch_x, patch_grad)
-                uap_z = fgsm_attack(uap_z, im_z_grad)
+                patch_x = fgsm_attack(patch_x, patch_grad, lr)
+                uap_z = fgsm_attack(uap_z, im_z_grad, lr)
                 """END：根据梯度得到新的扰动"""
 
             trainer_data = dict(
@@ -238,7 +253,7 @@ class RegularTrainer(TrainerBase):
             if signal_img_debug:
                 save_dir = '/tmp/uap_debug'
             else:
-                save_dir = '/tmp/uap'
+                save_dir = '/tmp/cls={}_ctr={}_reg={}_l2={}_lr={}'.format(cls_weight, ctr_weight, reg_weight, l2_z_weight, lr)
             if not os.path.exists(save_dir):
                 os.mkdir(save_dir)
             real_iter_num += 1
