@@ -4,14 +4,11 @@ from collections import OrderedDict
 import os
 from loguru import logger
 from tqdm import tqdm
-
 import torch
 from torch import nn
-
-from videoanalyst.utils import (Timer, ensure_dir, move_data_to_device,
-                                unwrap_model)
+from torch.utils.tensorboard import SummaryWriter
+from videoanalyst.utils import (Timer, move_data_to_device)
 from videoanalyst.utils.visualize_training import visualize_training, visualize_patched_img
-
 from ..trainer_base import TRACK_TRAINERS, TrainerBase
 
 
@@ -67,6 +64,21 @@ class RegularTrainer(TrainerBase):
         self._state["initialized"] = False
         self._state["devices"] = torch.device("cuda:0")
 
+        """START：设定参数"""
+        self.cls_weight = 1
+        self.ctr_weight = 1
+        self.reg_weight = 1
+        self.l2_z_weight = 0.01
+        self.lr_z = 0.1
+        self.lr_x = 1.0
+        self.optimize_mode = 'FGSM'
+        self.save_name = '{}_cls={}_ctr={}_reg={}_l2={}_lr_z={}_lr_x={}'.format(
+            self.optimize_mode, self.cls_weight, self.ctr_weight, self.reg_weight, self.l2_z_weight, self.lr_z, self.lr_x)
+        print(self.save_name)
+        """END：设定参数"""
+
+        self.writer = SummaryWriter(os.path.join('/tmp', self.save_name))
+
     def init_train(self, ):
         torch.cuda.empty_cache()
         # move model & loss to target devices
@@ -83,19 +95,6 @@ class RegularTrainer(TrainerBase):
 
     def train(self, patch_x, uap_z, real_iter_num, signal_img_debug, visualize, optimizer):
         """"""
-        """START：设定参数"""
-        cls_weight = 1
-        ctr_weight = 1
-        reg_weight = 1
-        l2_z_weight = 0.01
-        lr_z = 0.5
-        lr_x = 2.0
-        optimize_mode = 'FGSM'
-        save_name = '{}_cls={}_ctr={}_reg={}_l2={}_lr_z={}_lr_x={}'.format(
-            optimize_mode, cls_weight, ctr_weight, reg_weight, l2_z_weight, lr_z, lr_x)
-        print(save_name)
-        """END：设定参数"""
-
         if not self._state["initialized"]:
             self.init_train()
         self._state["initialized"] = True
@@ -117,6 +116,7 @@ class RegularTrainer(TrainerBase):
 
         time_dict = OrderedDict()
         for iteration, _ in enumerate(pbar):
+            real_iter_num += 1
             self._state["iteration"] = iteration
             with Timer(name="data", output_dict=time_dict):
 
@@ -199,10 +199,10 @@ class RegularTrainer(TrainerBase):
                 cls_loss = training_losses['cls']
                 ctr_loss = training_losses['ctr']
                 reg_loss = training_losses['reg']
-                total_loss = cls_weight*cls_loss + \
-                             ctr_weight*ctr_loss + \
-                             reg_weight*reg_loss + \
-                             l2_z_weight*norm_z_loss + \
+                total_loss = self.cls_weight*cls_loss + \
+                             self.ctr_weight*ctr_loss + \
+                             self.reg_weight*reg_loss + \
+                             self.l2_z_weight*norm_z_loss + \
                              0*norm_x_loss
                 """END：计算损失"""
 
@@ -214,22 +214,22 @@ class RegularTrainer(TrainerBase):
                 total_loss.backward()
                 """END：梯度反传"""
 
-                if optimize_mode == 'FGSM':
+                if self.optimize_mode == 'FGSM':
                     """START：收集相对于输入图像的梯度"""
                     im_z_grad = torch.mean(uap_z.grad.data, dim=0, keepdims=True)
                     patch_grad = torch.mean(patch_x.grad.data, dim=0, keepdims=True)
                     """END：收集相对于输入图像的梯度"""
 
                     """START：根据梯度得到新的扰动"""
-                    patch_x = fgsm_attack(patch_x, patch_grad, lr_x)
-                    uap_z = fgsm_attack(uap_z, im_z_grad, lr_z)
+                    patch_x = fgsm_attack(patch_x, patch_grad, self.lr_x)
+                    uap_z = fgsm_attack(uap_z, im_z_grad, self.lr_z)
                     patch_x = patch_x.detach()
                     uap_z = uap_z.detach()
                     """END：根据梯度得到新的扰动"""
-                elif optimize_mode == 'optimizer':
+                elif self.optimize_mode == 'optimizer':
                     optimizer.step()
                 else:
-                    assert False, optimize_mode
+                    assert False, self.optimize_mode
 
             trainer_data = dict(
                 schedule_info=schedule_info,
@@ -243,6 +243,16 @@ class RegularTrainer(TrainerBase):
             for monitor in self._monitors:
                 monitor.update(trainer_data)
 
+            """START：记录训练情况"""
+            self.writer.add_scalar('Norm_X', norm_x_loss.item(), real_iter_num)
+            self.writer.add_scalar('Norm_Z', norm_z_loss.item(), real_iter_num)
+            self.writer.add_scalar('CLS_Loss', cls_loss.item(), real_iter_num)
+            self.writer.add_scalar('CTR_Loss', ctr_loss.item(), real_iter_num)
+            self.writer.add_scalar('REG_Loss', reg_loss.item(), real_iter_num)
+            self.writer.add_scalar('IOU', trainer_data['extras']['reg']['iou'].item(), real_iter_num)
+            self.writer.flush()
+            """END：记录训练情况"""
+
             if not signal_img_debug:
                 del training_data
 
@@ -253,10 +263,9 @@ class RegularTrainer(TrainerBase):
             if signal_img_debug:
                 save_dir = '/tmp/uap_debug'
             else:
-                save_dir = os.path.join('/tmp', save_name)
+                save_dir = os.path.join('/tmp', self.save_name)
             if not os.path.exists(save_dir):
                 os.mkdir(save_dir)
-            real_iter_num += 1
             if real_iter_num & (real_iter_num - 1) == 0:
                 save_path_x = os.path.join(save_dir, 'x_{}'.format(real_iter_num))
                 save_path_z = os.path.join(save_dir, 'z_{}'.format(real_iter_num))
