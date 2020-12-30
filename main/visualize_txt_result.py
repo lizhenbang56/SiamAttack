@@ -5,20 +5,47 @@ import imageio
 import numpy as np
 from PIL import Image, ImageDraw
 
-from videoanalyst.pipeline.utils import xywh2xyxy
+from videoanalyst.pipeline.utils import xywh2xyxy, xywh2cxywh
 from videoanalyst.evaluation.got_benchmark.utils.metrics import rect_iou
 from videoanalyst.evaluation.got_benchmark.experiments.got10k import ExperimentGOT10k
 
 
-def visualize(pred, video_name, dataset_dir, overwrite):
+def visualize(pred, gt, fgt, video_name, dataset_dir, overwrite):
     img_list = []
     imgs = sorted(glob.glob(os.path.join(dataset_dir, '*.jpg')))
-    for pred_, img_path in zip(pred, imgs):
+
+    """START：声明透明轨迹图像"""
+    trajectory = Image.new('RGBA', Image.open(imgs[0]).size)
+    draw_trajectory = ImageDraw.Draw(trajectory)
+    """END：声明透明轨迹图像"""
+
+    for pred_, gt_, fgt_, img_path in zip(pred, gt, fgt, imgs):
         img = Image.open(img_path)
+        img = img.convert("RGBA")
         draw = ImageDraw.Draw(img)
-        patch_anno_xyxy = xywh2xyxy(pred_)
-        draw.rectangle(patch_anno_xyxy, None, 'green', width=8)
-        img = img.resize((400, 300))
+
+        """START：中心点"""
+        pred_cxy = xywh2cxywh(pred_)[:2]
+        gt_cxy = xywh2cxywh(gt_)[:2]
+        fgt_cxy = xywh2cxywh(fgt_)[:2]
+        w = 8
+        draw.ellipse([tuple(pred_cxy-w), tuple(pred_cxy+w)], fill='green')
+        draw.ellipse([tuple(gt_cxy-w), tuple(gt_cxy+w)], fill='red')
+        draw.ellipse([tuple(fgt_cxy-w), tuple(fgt_cxy+w)], fill='yellow')
+        """END：中心点"""
+
+        """START：更新轨迹图像"""
+        w = 2
+        draw_trajectory.ellipse([tuple(pred_cxy - w), tuple(pred_cxy + w)], fill='green')
+        draw_trajectory.ellipse([tuple(gt_cxy - w), tuple(gt_cxy + w)], fill='red')
+        draw_trajectory.ellipse([tuple(fgt_cxy - w), tuple(fgt_cxy + w)], fill='yellow')
+        """END：更新轨迹图像"""
+
+        """START：图像融合"""
+        img = Image.alpha_composite(img, trajectory)
+        """END：图像融合"""
+
+        # img = img.resize((200, 150))
         img_list.append(img)
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
@@ -27,7 +54,7 @@ def visualize(pred, video_name, dataset_dir, overwrite):
     if os.path.isfile(file_path) and not overwrite:
         print('Already exists:', end=' ')
     else:
-        imageio.mimsave(file_path, img_list, fps=20)
+        img_list[0].save(file_path, save_all=True, append_images=img_list[1:], quality=50)
     print(file_path)
     return
 
@@ -38,18 +65,20 @@ def cal_ao(gt, pred):
     return ao
 
 
-def run_per_video(video_name, overwrite):
+def run_per_video(video_name, gt, overwrite):
     phase = video_name.split('_')[1].lower()
     dataset_dir = os.path.join(dataset_root, phase, video_name)
     pred_txt_path = os.path.join(pred_dir, video_name, video_name + "_001.txt")
+    fgt_txt_path = os.path.join(fgt_root, video_name + '.txt')
     pred = np.loadtxt(pred_txt_path, delimiter=',')
-    visualize(pred, video_name, dataset_dir, overwrite)
+    fgt = np.loadtxt(fgt_txt_path, delimiter=',')
+    visualize(pred, gt, fgt, video_name, dataset_dir, overwrite)
 
 
 def visualize_txt_result(overwrite):
     video_names = sorted(os.listdir(pred_dir))
-    for video_name in video_names:
-        run_per_video(video_name, overwrite)
+    for video_name, gt in zip(video_names, got10k_tool.dataset):
+        run_per_video(video_name, gt[1], overwrite)
 
 
 if __name__ == '__main__':
@@ -57,5 +86,6 @@ if __name__ == '__main__':
     dataset_root = os.path.join(root, 'video_analyst/datasets/GOT-10k')
     pred_dir = os.path.join(root, 'video_analyst/logs/GOT-Benchmark/result/GOT-10k/siamfcpp_googlenet')
     save_dir = '/tmp/uap_vis_txt'
+    fgt_root = os.path.join(root, 'patch_anno')
     got10k_tool = ExperimentGOT10k(dataset_root, subset='val')
     visualize_txt_result(overwrite=True)
