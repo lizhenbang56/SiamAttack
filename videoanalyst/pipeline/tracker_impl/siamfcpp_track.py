@@ -106,12 +106,13 @@ class SiamFCppTracker(PipelineBase):
 
         """START：读入扰动"""
         loop_num = 512
-        uap_root = '/tmp/uap'
+        uap_root = '/tmp/FGSM_cls=1_ctr=1_reg=1_l2=0.001_lr=0.5'
         patch_x_path = os.path.join(uap_root, 'x_{}'.format(loop_num))
         uap_z_path = os.path.join(uap_root, 'z_{}'.format(loop_num))
         self.patch_x = torch.load(patch_x_path, map_location='cpu')
         self.uap_z = torch.load(uap_z_path, map_location='cpu')
         print('loading: ', patch_x_path, uap_z_path)
+        assert self.patch_x.shape[-1] == 128
         """END：读入扰动"""
         return
 
@@ -260,25 +261,22 @@ class SiamFCppTracker(PipelineBase):
         self._state["scale_x"] = deepcopy(scale_x)
 
         """START：得到补丁相对于搜索图像的位置"""
+        # 获得补丁在原图上的位置（即相对于原图的 FGT）
         patch_gt_x1_ori, patch_gt_y1_ori, patch_gt_w_ori, patch_gt_h_ori = self._model.patch_gt_xywh_ori
         patch_gt_x2_ori = patch_gt_x1_ori + patch_gt_w_ori
         patch_gt_y2_ori = patch_gt_y1_ori + patch_gt_h_ori
+        # 将补丁在原图上的位置转换为在搜索图像上的位置
         x1, y1 = _point_from_orginal_img_to_search_img([patch_gt_x1_ori, patch_gt_y1_ori], target_pos, scale_x, x_size)
         x2, y2 = _point_from_orginal_img_to_search_img([patch_gt_x2_ori, patch_gt_y2_ori], target_pos, scale_x, x_size)
-        cx = (x2 + x1) / 2
-        cy = (y2 + y1) / 2
-        patch_h, patch_w = self.patch_x.shape[2:]
-        xx1 = int(cx - patch_w / 2)
-        yy1 = int(cy - patch_h / 2)
-        xx2 = xx1 + patch_w
-        yy2 = yy1 + patch_h
+        w = x2 - x1
+        h = y2 - y1
         """START：得到补丁相对于搜索图像的位置"""
 
         """START：在搜索图像添加对抗补丁"""
         data = imarray_to_tensor(im_x_crop).to(self.device)  # [1,3,h,w]
         try:
-            data[0, :, yy1:yy2, xx1:xx2] = self.patch_x.to(self.device)
-        except Exception as e:
+            data[0, :, y1:y2, x1:x2] = torch.nn.functional.interpolate(self.patch_x, (h, w)).to(self.device)
+        except Exception:
             print('bad prediction')
         """END：在搜索图像添加对抗补丁"""
 
