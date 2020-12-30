@@ -69,12 +69,15 @@ class RegularTrainer(TrainerBase):
         self.ctr_weight = 1
         self.reg_weight = 1
         self.l2_z_weight = 0.01
+        self.l2_x_weight = 0.000001
         self.lr_z = 0.1
-        self.lr_x = 1.0
+        self.lr_x = 0.5
         self.optimize_mode = 'FGSM'
-        self.save_name = '{}_cls={}_ctr={}_reg={}_l2={}_lr_z={}_lr_x={}'.format(
-            self.optimize_mode, self.cls_weight, self.ctr_weight, self.reg_weight, self.l2_z_weight, self.lr_z, self.lr_x)
+        self.save_name = '{}_cls={}_ctr={}_reg={}_l2_z={}_l2_x={}_lr_z={}_lr_x={}'.format(
+            self.optimize_mode, self.cls_weight, self.ctr_weight, self.reg_weight,
+            self.l2_z_weight, self.l2_x_weight, self.lr_z, self.lr_x)
         print(self.save_name)
+        self.save_dir = os.path.join('/tmp', self.save_name)
         """END：设定参数"""
 
         self.writer = SummaryWriter(os.path.join('/tmp', self.save_name))
@@ -203,7 +206,7 @@ class RegularTrainer(TrainerBase):
                              self.ctr_weight*ctr_loss + \
                              self.reg_weight*reg_loss + \
                              self.l2_z_weight*norm_z_loss + \
-                             0*norm_x_loss
+                             self.l2_x_weight*norm_x_loss
                 """END：计算损失"""
 
                 """START：模型梯度清空"""
@@ -244,11 +247,11 @@ class RegularTrainer(TrainerBase):
                 monitor.update(trainer_data)
 
             """START：记录训练情况"""
-            self.writer.add_scalar('Norm_X', norm_x_loss.item(), real_iter_num)
-            self.writer.add_scalar('Norm_Z', norm_z_loss.item(), real_iter_num)
-            self.writer.add_scalar('CLS_Loss', cls_loss.item(), real_iter_num)
-            self.writer.add_scalar('CTR_Loss', ctr_loss.item(), real_iter_num)
-            self.writer.add_scalar('REG_Loss', reg_loss.item(), real_iter_num)
+            self.writer.add_scalar('norm/Norm_X', norm_x_loss.item(), real_iter_num)
+            self.writer.add_scalar('norm/Norm_Z', norm_z_loss.item(), real_iter_num)
+            self.writer.add_scalar('loss/CLS_Loss', cls_loss.item(), real_iter_num)
+            self.writer.add_scalar('loss/CTR_Loss', ctr_loss.item(), real_iter_num)
+            self.writer.add_scalar('loss/REG_Loss', reg_loss.item(), real_iter_num)
             self.writer.add_scalar('IOU', trainer_data['extras']['reg']['iou'].item(), real_iter_num)
             self.writer.flush()
             """END：记录训练情况"""
@@ -263,7 +266,7 @@ class RegularTrainer(TrainerBase):
             if signal_img_debug:
                 save_dir = '/tmp/uap_debug'
             else:
-                save_dir = os.path.join('/tmp', self.save_name)
+                save_dir = self.save_dir
             if not os.path.exists(save_dir):
                 os.mkdir(save_dir)
             if real_iter_num & (real_iter_num - 1) == 0:

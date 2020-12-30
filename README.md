@@ -10,6 +10,14 @@ pytorch1.4_python3.7
 python main/train.py --config experiments/siamfcpp/train/got10k/siamfcpp_googlenet-trn.yaml -r /home/etvuz/projects/adversarial_attack/video_analyst/models/siamfcpp/siamfcpp-googlenet-got-md5_e182dc4c3823427022eccf7313d740a7.pkl
 ```
 
+# 训练所有数据
+```bash
+source activate pytorch1.4_python3.7
+export CUDA_VISIBLE_DEVICES=1,2,3
+cd /home/etvuz/projects/adversarial_attack/video_analyst
+python main/train.py --config experiments/siamfcpp/train/fulldata/siamfcpp_googlenet-trn-fulldata.yaml -r /home/etvuz/projects/adversarial_attack/video_analyst/models/siamfcpp/siamfcpp-googlenet-got-md5_e182dc4c3823427022eccf7313d740a7.pkl
+```
+
 # 将 txt 跟踪结果可视化
 
 ```bash

@@ -104,7 +104,7 @@ if __name__ == '__main__':
                                    dataloader)
     trainer.set_device(devs)
     trainer.resume(parsed_args.resume)
-    trainer.init_train()
+    # trainer.init_train()
 
     """START：声明通用扰动"""
     if not parsed_args.uap_resume:

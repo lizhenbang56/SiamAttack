@@ -105,8 +105,8 @@ class SiamFCppTracker(PipelineBase):
         self.set_model(self._model)
 
         """START：读入扰动"""
-        loop_num = 512
-        uap_root = '/tmp/FGSM_cls=1_ctr=1_reg=1_l2=0.001_lr=0.5'
+        loop_num = 4096
+        uap_root = '/tmp/FGSM_cls=1_ctr=1_reg=1_l2=0.01_lr_z=0.1_lr_x=1.0'
         patch_x_path = os.path.join(uap_root, 'x_{}'.format(loop_num))
         uap_z_path = os.path.join(uap_root, 'z_{}'.format(loop_num))
         self.patch_x = torch.load(patch_x_path, map_location='cpu')
