@@ -100,7 +100,7 @@ class PipelineTracker(object):
                 boxes[f, :] = self.update(image)
 
                 """START：可视化模板/搜索图像"""
-                visualize_flag = True
+                visualize_flag = False
                 if visualize_flag:
                     visualize_search_img(self.pipeline._state['adv_search_img'],
                                          self.pipeline._state['best_box_xyxy_in_search_img'])

@@ -87,10 +87,13 @@ class RegularTrainer(TrainerBase):
         cls_weight = 1
         ctr_weight = 1
         reg_weight = 1
-        l2_z_weight = 0.001
-        lr = 0.5
+        l2_z_weight = 0.01
+        lr_z = 0.5
+        lr_x = 2.0
         optimize_mode = 'FGSM'
-        print('{}_cls_weight={}, ctr_weight={}, reg_weight={}, l2_z_weight={}, lr={}'.format(optimize_mode, cls_weight, ctr_weight, reg_weight, l2_z_weight, lr))
+        save_name = '{}_cls={}_ctr={}_reg={}_l2={}_lr_z={}_lr_x={}'.format(
+            optimize_mode, cls_weight, ctr_weight, reg_weight, l2_z_weight, lr_z, lr_x)
+        print(save_name)
         """END：设定参数"""
 
         if not self._state["initialized"]:
@@ -218,8 +221,8 @@ class RegularTrainer(TrainerBase):
                     """END：收集相对于输入图像的梯度"""
 
                     """START：根据梯度得到新的扰动"""
-                    patch_x = fgsm_attack(patch_x, patch_grad, lr)
-                    uap_z = fgsm_attack(uap_z, im_z_grad, lr)
+                    patch_x = fgsm_attack(patch_x, patch_grad, lr_x)
+                    uap_z = fgsm_attack(uap_z, im_z_grad, lr_z)
                     patch_x = patch_x.detach()
                     uap_z = uap_z.detach()
                     """END：根据梯度得到新的扰动"""
@@ -250,7 +253,7 @@ class RegularTrainer(TrainerBase):
             if signal_img_debug:
                 save_dir = '/tmp/uap_debug'
             else:
-                save_dir = '/tmp/{}_cls={}_ctr={}_reg={}_l2={}_lr={}'.format(optimize_mode, cls_weight, ctr_weight, reg_weight, l2_z_weight, lr)
+                save_dir = os.path.join('/tmp', save_name)
             if not os.path.exists(save_dir):
                 os.mkdir(save_dir)
             real_iter_num += 1
