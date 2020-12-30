@@ -34,6 +34,15 @@ def visualize(pred, gt, fgt, video_name, dataset_dir, overwrite):
         draw.ellipse([tuple(fgt_cxy-w), tuple(fgt_cxy+w)], fill='yellow')
         """END：中心点"""
 
+        """START：可视化矩形框"""
+        pred_xyxy = xywh2xyxy(pred_)
+        gt_xyxy = xywh2xyxy(gt_)
+        fgt_xyxy = xywh2xyxy(fgt_)
+        draw.rectangle(pred_xyxy, fill=None, outline='green', width=4)
+        draw.rectangle(gt_xyxy, fill=None, outline='red', width=4)
+        draw.rectangle(fgt_xyxy, fill=None, outline='yellow', width=4)
+        """END：可视化矩形框"""
+
         """START：更新轨迹图像"""
         w = 2
         draw_trajectory.ellipse([tuple(pred_cxy - w), tuple(pred_cxy + w)], fill='green')
