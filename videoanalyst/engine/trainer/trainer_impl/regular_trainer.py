@@ -22,7 +22,7 @@ def fgsm_attack(uap, data_grad, epsilon):
 
 
 def get_patch_grad(tensor, pos, patch_w, patch_h):
-    grad = torch.zeros((1,3,patch_h,patch_w), device=tensor.device)
+    grad = torch.zeros((1, 3, patch_h,patch_w), device=tensor.device)
     for t, p in zip(tensor, pos):
         x1, y1, x2, y2 = p
         grad += t[:, y1:y2, x1:x2]
@@ -81,19 +81,17 @@ class RegularTrainer(TrainerBase):
         super(RegularTrainer, self).init_train()
         logger.info("{} initialized".format(type(self).__name__))
 
-    def train(self, patch_x, uap_z, real_iter_num, signal_img_debug, visualize):
+    def train(self, patch_x, uap_z, real_iter_num, signal_img_debug, visualize, optimizer):
         """"""
         """START：设定参数"""
-        cls_weight = 2
-        ctr_weight = 0
-        reg_weight = 0
+        cls_weight = 1
+        ctr_weight = 1
+        reg_weight = 1
         l2_z_weight = 0.001
         lr = 0.5
-        optimize_mode = 'optimizer'
+        optimize_mode = 'FGSM'
         print('{}_cls_weight={}, ctr_weight={}, reg_weight={}, l2_z_weight={}, lr={}'.format(optimize_mode, cls_weight, ctr_weight, reg_weight, l2_z_weight, lr))
         """END：设定参数"""
-
-        optimizer = None
 
         if not self._state["initialized"]:
             self.init_train()
@@ -144,24 +142,15 @@ class RegularTrainer(TrainerBase):
             # forward propagation
             with Timer(name="fwd", output_dict=time_dict):
 
-                """START：初始化通用扰动"""
-                patch_w = patch_h = 64
-                if patch_x is None:
-                    patch_x = torch.normal(mean=(128.0*torch.ones(1,3,patch_h,patch_w))).to(self._state["devices"][0])
-                    uap_z = torch.zeros((1, 3, training_data['im_z'].shape[2], training_data['im_z'].shape[3])).to(self._state["devices"][0])
-                    optimizer = torch.optim.AdamW([patch_x, uap_z], lr=0.1, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.0, amsgrad=False)
-                else:
-                    patch_x = patch_x.to(self._state["devices"][0])
-                    uap_z = uap_z.to(self._state["devices"][0])
-                if optimizer is None:
-                    optimizer = torch.optim.AdamW([patch_x, uap_z], lr=0.1, betas=(0.9, 0.999), eps=1e-08,
-                                                  weight_decay=0.0, amsgrad=False)
-                """END：初始化通用扰动"""
+                """START：将扰动放至正确的显卡"""
+                patch_x = patch_x.to(self._state["devices"][0])
+                uap_z = uap_z.to(self._state["devices"][0])
+                """END：将扰动放至正确的显卡"""
 
-                """START：设置输入图像为可获取梯度"""
+                """START：设置扰动为可获取梯度"""
                 uap_z.requires_grad = True
                 patch_x.requires_grad = True
-                """END：设置输入图像为可获取梯度"""
+                """END：设置扰动为可获取梯度"""
 
                 """START：备份干净图像"""
                 im_z_ori = copy.deepcopy(training_data['im_z'].data)
@@ -169,18 +158,12 @@ class RegularTrainer(TrainerBase):
                 """END：备份干净图像"""
 
                 """START：在搜索图像添加补丁"""
-                patch_pos = []
                 for idx, xyxy in enumerate(training_data['bbox_x']):
-                    x1, y1, x2, y2 = [int(var) for var in xyxy]
-                    cx = (x2+x1)/2
-                    cy = (y2+y1)/2
-                    xx1 = int(cx-patch_w/2)
-                    yy1 = int(cy-patch_h/2)
-                    xx2 = xx1 + patch_w
-                    yy2 = yy1 + patch_h
-                    patch_pos.append([xx1, yy1, xx2, yy2])
+                    x1, y1, x2, y2 = [int(var) for var in xyxy]  # 补丁在搜索图像上的位置
+                    w = x2 - x1
+                    h = y2 - y1
                     try:
-                        training_data['im_x'][idx, :, yy1:yy2, xx1:xx2] = patch_x.to(self._state["devices"][0])
+                        training_data['im_x'][idx, :, y1:y2, x1:x2] = torch.nn.functional.interpolate(patch_x, (h, w))
                     except:
                         print("Error paste patch")
                         continue

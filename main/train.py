@@ -108,8 +108,10 @@ if __name__ == '__main__':
 
     """START：声明通用扰动"""
     if not parsed_args.uap_resume:
-        patch_x = None
-        uap_z = None
+        patch_x = torch.normal(mean=(128.0 * torch.ones(1, 3, 128, 128)))
+        uap_z = torch.zeros((1, 3, 127, 127))
+        optimizer = torch.optim.AdamW([patch_x, uap_z], lr=0.1, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.0,
+                                      amsgrad=False)
     else:
         uap_num = 4096
         uap_x_path = '/tmp/uap_v1.1/x_{}'.format(uap_num)
@@ -122,7 +124,8 @@ if __name__ == '__main__':
 
     logger.info("Start training")
     while not trainer.is_completed():
-        patch_x, uap_z, real_iter_num = trainer.train(patch_x, uap_z, real_iter_num, parsed_args.signal_img_debug, visualize=parsed_args.uap_resume)
+        patch_x, uap_z, real_iter_num = trainer.train(patch_x, uap_z, real_iter_num, parsed_args.signal_img_debug,
+                                                      visualize=parsed_args.uap_resume, optimizer=optimizer)
         trainer.save_snapshot()
     # export final model
     trainer.save_snapshot(model_param_only=True)
