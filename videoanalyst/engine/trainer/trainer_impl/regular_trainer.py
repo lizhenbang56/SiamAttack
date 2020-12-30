@@ -89,8 +89,11 @@ class RegularTrainer(TrainerBase):
         reg_weight = 0
         l2_z_weight = 0.001
         lr = 0.5
-        print('cls_weight={}, ctr_weight={}, reg_weight={}, l2_z_weight={}, lr={}'.format(cls_weight, ctr_weight, reg_weight, l2_z_weight, lr))
+        optimize_mode = 'optimizer'
+        print('{}_cls_weight={}, ctr_weight={}, reg_weight={}, l2_z_weight={}, lr={}'.format(optimize_mode, cls_weight, ctr_weight, reg_weight, l2_z_weight, lr))
         """END：设定参数"""
+
+        optimizer = None
 
         if not self._state["initialized"]:
             self.init_train()
@@ -126,7 +129,6 @@ class RegularTrainer(TrainerBase):
                 else:
                     training_data = next(self._dataloader)
 
-
                 if not signal_img_debug or training_data is None:
                     training_data = next(self._dataloader)
                 if signal_img_debug:
@@ -147,10 +149,19 @@ class RegularTrainer(TrainerBase):
                 if patch_x is None:
                     patch_x = torch.normal(mean=(128.0*torch.ones(1,3,patch_h,patch_w))).to(self._state["devices"][0])
                     uap_z = torch.zeros((1, 3, training_data['im_z'].shape[2], training_data['im_z'].shape[3])).to(self._state["devices"][0])
+                    optimizer = torch.optim.AdamW([patch_x, uap_z], lr=0.1, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.0, amsgrad=False)
                 else:
                     patch_x = patch_x.to(self._state["devices"][0])
                     uap_z = uap_z.to(self._state["devices"][0])
+                if optimizer is None:
+                    optimizer = torch.optim.AdamW([patch_x, uap_z], lr=0.1, betas=(0.9, 0.999), eps=1e-08,
+                                                  weight_decay=0.0, amsgrad=False)
                 """END：初始化通用扰动"""
+
+                """START：设置输入图像为可获取梯度"""
+                uap_z.requires_grad = True
+                patch_x.requires_grad = True
+                """END：设置输入图像为可获取梯度"""
 
                 """START：备份干净图像"""
                 im_z_ori = copy.deepcopy(training_data['im_z'].data)
@@ -181,13 +192,9 @@ class RegularTrainer(TrainerBase):
                 training_data['im_z'] = uap_z + training_data['im_z'].data
                 """END：将扰动叠加至输入图像"""
 
-                """START：设置输入图像为可获取梯度"""
-                training_data['im_z'].requires_grad = True
-                training_data['im_x'].requires_grad = True
-                """END：设置输入图像为可获取梯度"""
-
                 """START：网络前向传播"""
                 self._model.eval()  # !!!非常重要。否则造成训练测试不一致。我们根本不训练网络。
+                optimizer.zero_grad()
                 predict_data = self._model(training_data)
                 """END：网络前向传播"""
 
@@ -221,15 +228,22 @@ class RegularTrainer(TrainerBase):
                 total_loss.backward()
                 """END：梯度反传"""
 
-                """START：收集相对于输入图像的梯度"""
-                im_z_grad = torch.mean(training_data['im_z'].grad.data, dim=0, keepdims=True)
-                patch_grad = get_patch_grad(training_data['im_x'].grad.data, patch_pos, patch_w, patch_h)
-                """END：收集相对于输入图像的梯度"""
+                if optimize_mode == 'FGSM':
+                    """START：收集相对于输入图像的梯度"""
+                    im_z_grad = torch.mean(uap_z.grad.data, dim=0, keepdims=True)
+                    patch_grad = torch.mean(patch_x.grad.data, dim=0, keepdims=True)
+                    """END：收集相对于输入图像的梯度"""
 
-                """START：根据梯度得到新的扰动"""
-                patch_x = fgsm_attack(patch_x, patch_grad, lr)
-                uap_z = fgsm_attack(uap_z, im_z_grad, lr)
-                """END：根据梯度得到新的扰动"""
+                    """START：根据梯度得到新的扰动"""
+                    patch_x = fgsm_attack(patch_x, patch_grad, lr)
+                    uap_z = fgsm_attack(uap_z, im_z_grad, lr)
+                    patch_x = patch_x.detach()
+                    uap_z = uap_z.detach()
+                    """END：根据梯度得到新的扰动"""
+                elif optimize_mode == 'optimizer':
+                    optimizer.step()
+                else:
+                    assert False, optimize_mode
 
             trainer_data = dict(
                 schedule_info=schedule_info,
@@ -253,7 +267,7 @@ class RegularTrainer(TrainerBase):
             if signal_img_debug:
                 save_dir = '/tmp/uap_debug'
             else:
-                save_dir = '/tmp/cls={}_ctr={}_reg={}_l2={}_lr={}'.format(cls_weight, ctr_weight, reg_weight, l2_z_weight, lr)
+                save_dir = '/tmp/{}_cls={}_ctr={}_reg={}_l2={}_lr={}'.format(optimize_mode, cls_weight, ctr_weight, reg_weight, l2_z_weight, lr)
             if not os.path.exists(save_dir):
                 os.mkdir(save_dir)
             real_iter_num += 1
