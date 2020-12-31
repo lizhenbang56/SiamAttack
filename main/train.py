@@ -120,12 +120,13 @@ if __name__ == '__main__':
         uap_z = torch.load(uap_z_path)
         print('load: ', uap_x_path, uap_z_path)
     real_iter_num = 0
+    dataset_name = parsed_args.config.split('/')[-2]
     """END：声明通用扰动"""
 
     logger.info("Start training")
     while not trainer.is_completed():
         patch_x, uap_z, real_iter_num = trainer.train(patch_x, uap_z, real_iter_num, parsed_args.signal_img_debug,
-                                                      visualize=parsed_args.uap_resume, optimizer=optimizer)
+                                                      visualize=parsed_args.uap_resume, optimizer=optimizer, dataset_name=dataset_name)
         trainer.save_snapshot()
     # export final model
     trainer.save_snapshot(model_param_only=True)

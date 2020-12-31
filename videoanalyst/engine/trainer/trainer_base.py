@@ -85,7 +85,7 @@ class TrainerBase:
         for monitor in self._monitors:
             monitor.init(self._state)
 
-    def train(self, patch_x, uap_z, real_iter_num, signal_img_debug, visualize, optimizer):
+    def train(self, patch_x, uap_z, real_iter_num, signal_img_debug, visualize, optimizer, dataset_name):
         r"""
         an interface to train for one epoch
         """

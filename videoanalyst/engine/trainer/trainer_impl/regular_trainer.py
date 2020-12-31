@@ -68,19 +68,15 @@ class RegularTrainer(TrainerBase):
         self.cls_weight = 1
         self.ctr_weight = 1
         self.reg_weight = 1
-        self.l2_z_weight = 0.01
-        self.l2_x_weight = 0.000001
+        self.l2_z_weight = 0.005  # 希望模板图像 z 的扰动小，因此权重应该大。
+        self.l2_x_weight = 0.00001
         self.lr_z = 0.1
         self.lr_x = 0.5
         self.optimize_mode = 'FGSM'
         self.save_name = '{}_cls={}_ctr={}_reg={}_l2_z={}_l2_x={}_lr_z={}_lr_x={}'.format(
             self.optimize_mode, self.cls_weight, self.ctr_weight, self.reg_weight,
             self.l2_z_weight, self.l2_x_weight, self.lr_z, self.lr_x)
-        print(self.save_name)
-        self.save_dir = os.path.join('/tmp', self.save_name)
         """END：设定参数"""
-
-        self.writer = SummaryWriter(os.path.join('/tmp', self.save_name))
 
     def init_train(self, ):
         torch.cuda.empty_cache()
@@ -96,11 +92,22 @@ class RegularTrainer(TrainerBase):
         super(RegularTrainer, self).init_train()
         logger.info("{} initialized".format(type(self).__name__))
 
-    def train(self, patch_x, uap_z, real_iter_num, signal_img_debug, visualize, optimizer):
+    def train(self, patch_x, uap_z, real_iter_num, signal_img_debug, visualize, optimizer, dataset_name):
         """"""
         if not self._state["initialized"]:
             self.init_train()
         self._state["initialized"] = True
+
+        """START：设置保存路径"""
+        self.save_name = 'train_set={}_'.format(dataset_name) + self.save_name
+        print(self.save_name)
+        save_dir = os.path.join('/home/etvuz/projects/adversarial_attack/video_analyst/snapshots', self.save_name)
+        if signal_img_debug:
+            save_dir = '/tmp/uap_debug'
+        self.writer = SummaryWriter(save_dir)
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        """END：设置保存路径"""
 
         self._state["epoch"] += 1
         epoch = self._state["epoch"]
@@ -158,11 +165,6 @@ class RegularTrainer(TrainerBase):
                 patch_x.requires_grad = True
                 """END：设置扰动为可获取梯度"""
 
-                """START：备份干净图像"""
-                im_z_ori = copy.deepcopy(training_data['im_z'].data)
-                im_x_ori = copy.deepcopy(training_data['im_x'].data)
-                """END：备份干净图像"""
-
                 """START：在搜索图像添加补丁"""
                 for idx, xyxy in enumerate(training_data['bbox_x']):
                     x1, y1, x2, y2 = [int(var) for var in xyxy]  # 补丁在搜索图像上的位置
@@ -197,8 +199,8 @@ class RegularTrainer(TrainerBase):
                 for loss_name, loss in self._losses.items():
                     training_losses[loss_name], extras[loss_name] = loss(
                         predict_data, training_data)
-                norm_x_loss = torch.mean((training_data['im_x'] - im_x_ori).pow(2))
-                norm_z_loss = torch.mean((training_data['im_z'] - im_z_ori).pow(2))
+                norm_x_loss = torch.mean(patch_x.pow(2))
+                norm_z_loss = torch.mean(uap_z.pow(2))
                 cls_loss = training_losses['cls']
                 ctr_loss = training_losses['ctr']
                 reg_loss = training_losses['reg']
@@ -247,12 +249,12 @@ class RegularTrainer(TrainerBase):
                 monitor.update(trainer_data)
 
             """START：记录训练情况"""
-            self.writer.add_scalar('norm/Norm_X', norm_x_loss.item(), real_iter_num)
-            self.writer.add_scalar('norm/Norm_Z', norm_z_loss.item(), real_iter_num)
-            self.writer.add_scalar('loss/CLS_Loss', cls_loss.item(), real_iter_num)
-            self.writer.add_scalar('loss/CTR_Loss', ctr_loss.item(), real_iter_num)
-            self.writer.add_scalar('loss/REG_Loss', reg_loss.item(), real_iter_num)
-            self.writer.add_scalar('IOU', trainer_data['extras']['reg']['iou'].item(), real_iter_num)
+            self.writer.add_scalar('norm/norm_x', norm_x_loss.item(), real_iter_num)
+            self.writer.add_scalar('norm/norm_z', norm_z_loss.item(), real_iter_num)
+            self.writer.add_scalar('loss/cls_loss', cls_loss.item(), real_iter_num)
+            self.writer.add_scalar('loss/ctr_Loss', ctr_loss.item(), real_iter_num)
+            self.writer.add_scalar('loss/reg_Loss', reg_loss.item(), real_iter_num)
+            self.writer.add_scalar('iou', trainer_data['extras']['reg']['iou'].item(), real_iter_num)
             self.writer.flush()
             """END：记录训练情况"""
 
@@ -263,12 +265,6 @@ class RegularTrainer(TrainerBase):
             pbar.set_description(print_str)
 
             """START：保存扰动"""
-            if signal_img_debug:
-                save_dir = '/tmp/uap_debug'
-            else:
-                save_dir = self.save_dir
-            if not os.path.exists(save_dir):
-                os.mkdir(save_dir)
             if real_iter_num & (real_iter_num - 1) == 0:
                 save_path_x = os.path.join(save_dir, 'x_{}'.format(real_iter_num))
                 save_path_z = os.path.join(save_dir, 'z_{}'.format(real_iter_num))
