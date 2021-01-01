@@ -322,7 +322,8 @@ class SiamFCppTracker(PipelineBase):
             self._state['ctr'] = ctr
             self._state['adv_search_img'] = np.ascontiguousarray(data[0].cpu().numpy().transpose(1,2,0))
             self._state['best_box_xyxy_in_search_img'] = box[best_pscore_id]
-            self._state['cls_pred'] = cls[:,0]
+            self._state['cls_pred'] = cls[:, 0]
+            self._state['ctr_pred'] = ctr[:, 0]
 
         return new_target_pos, new_target_sz
 

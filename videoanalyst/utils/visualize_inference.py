@@ -33,13 +33,13 @@ def visualize_template_img(adv_template_img):
     return
 
 
-def visualize_cls_map(cls_pred):
+def visualize_cls_map(cls_pred, name):
     """
     cls_pred: torch.tensor, [batch,361,1]  numpy.array, [361]
     """
     cls_map = to_2d_map(cls_pred)
     cls_img = cv2.resize(cls_map, (search_img_size, search_img_size))
-    save_path = '/tmp/cls_pred.jpg'
+    save_path = '/tmp/{}.jpg'.format(name)
     print(save_path)
     assert cv2.imwrite(save_path, cls_img)
     return

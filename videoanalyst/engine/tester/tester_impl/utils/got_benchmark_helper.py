@@ -105,7 +105,8 @@ class PipelineTracker(object):
                     visualize_search_img(self.pipeline._state['adv_search_img'],
                                          self.pipeline._state['best_box_xyxy_in_search_img'])
                     visualize_template_img(self.pipeline._state['adv_template_img'])
-                    visualize_cls_map(self.pipeline._state['cls_pred'])
+                    visualize_cls_map(self.pipeline._state['cls_pred'], 'cls_pred')
+                    visualize_cls_map(self.pipeline._state['ctr_pred'], 'ctr_pred')
                 """END：可视化模板/搜索图像"""
 
             times[f] = time.time() - start_time
