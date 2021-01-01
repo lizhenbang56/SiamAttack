@@ -105,10 +105,10 @@ class SiamFCppTracker(PipelineBase):
         self.set_model(self._model)
 
         """START：读入扰动"""
-        loop_num = 4096
-        uap_root = '/tmp/FGSM_cls=1_ctr=1_reg=1_l2=0.01_lr_z=0.1_lr_x=1.0'
-        patch_x_path = os.path.join(uap_root, 'x_{}'.format(loop_num))
-        uap_z_path = os.path.join(uap_root, 'z_{}'.format(loop_num))
+        loop_num = 32768
+        self.uap_root = '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots/train_set=fulldata_FGSM_cls=1_ctr=1_reg=1_l2_z=0.005_l2_x=1e-05_lr_z=0.1_lr_x=0.5'
+        patch_x_path = os.path.join(self.uap_root, 'x_{}'.format(loop_num))
+        uap_z_path = os.path.join(self.uap_root, 'z_{}'.format(loop_num))
         self.patch_x = torch.load(patch_x_path, map_location='cpu')
         self.uap_z = torch.load(uap_z_path, map_location='cpu')
         print('loading: ', patch_x_path, uap_z_path)
@@ -184,7 +184,7 @@ class SiamFCppTracker(PipelineBase):
             """END：添加扰动"""
 
             """START：保存模板图像"""
-            self._state['adv_template_img'] = np.ascontiguousarray(data[0].cpu().numpy().transpose(1,2,0).astype(np.uint8))
+            self._state['adv_template_img'] = np.ascontiguousarray(data[0].cpu().numpy().transpose(1,2,0))
             """END：保存模板图像"""
 
             features = self._model(data, phase=phase)
@@ -320,7 +320,7 @@ class SiamFCppTracker(PipelineBase):
             self._state['all_box'] = box
             self._state['cls'] = cls
             self._state['ctr'] = ctr
-            self._state['adv_search_img'] = np.ascontiguousarray(data[0].cpu().numpy().transpose(1,2,0).astype(np.uint8))
+            self._state['adv_search_img'] = np.ascontiguousarray(data[0].cpu().numpy().transpose(1,2,0))
             self._state['best_box_xyxy_in_search_img'] = box[best_pscore_id]
             self._state['cls_pred'] = cls[:,0]
 
