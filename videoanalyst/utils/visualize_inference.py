@@ -1,5 +1,6 @@
 import cv2
 import math
+import numpy as np
 
 
 search_img_size = 303
@@ -13,8 +14,9 @@ def to_2d_map(tensor):
 
 def visualize_search_img(adv_search_img, best_box_xyxy_in_search_img):
     """
-    adv_search_img: unit8, ndarray, [h,w,3]
+    adv_search_img: 未转为unit8, ndarray, [h,w,3]
     """
+    adv_search_img = np.clip(adv_search_img, 0, 255).astype(np.uint8)
     x1, y1, x2, y2 = [int(var) for var in best_box_xyxy_in_search_img]
     assert adv_search_img.flags['C_CONTIGUOUS']
     adv_search_img = cv2.rectangle(adv_search_img, (x1, y1), (x2, y2), (0,0,255))
@@ -25,6 +27,7 @@ def visualize_search_img(adv_search_img, best_box_xyxy_in_search_img):
 
 
 def visualize_template_img(adv_template_img):
+    adv_template_img = np.clip(adv_template_img, 0, 255).astype(np.uint8)
     save_path = '/tmp/adv_template_img.jpg'
     assert cv2.imwrite(save_path, adv_template_img)
     return
