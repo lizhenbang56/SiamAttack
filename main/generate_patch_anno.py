@@ -79,7 +79,7 @@ def generate_random_trajectory(start_y, length, bound_y):
         if y < 0:
             y += random.randint(0, 32)
         elif y > bound_y:
-            y -= random.randint(-32, 0)
+            y += random.randint(-32, 0)
         else:
             y += random.randint(-32, 32)
         result.append(y)
