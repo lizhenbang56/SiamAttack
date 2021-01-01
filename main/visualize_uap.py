@@ -10,8 +10,13 @@ def visualize_uap(patch, name):
     patch: [batch, 3, 303, 303], torch.tensor
     """
     img = np.ascontiguousarray(patch[0].data.cpu().numpy().transpose(1,2,0))
-    base_img = 127.0 * np.ones_like(img)
-    img = (img + base_img).astype(np.uint8)
+    if name == 'x':
+        base_img = np.ones_like(img)
+    elif name == 'z':
+        base_img = 127.0 * np.ones_like(img)
+    else:
+        assert False, name
+    img = np.clip(img + base_img, 0, 255).astype(np.uint8)
 
     """START：计算 MSE"""
     MSE = np.mean((img-base_img)**2)
@@ -44,6 +49,6 @@ def main():
 
 
 if __name__ == '__main__':
-    root = '/tmp/uap'
-    num = 512
+    root = '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots/train_set=fulldata_FGSM_cls=1_ctr=1_reg=1_l2_z=0.005_l2_x=1e-05_lr_z=0.1_lr_x=0.5'
+    num = 32768
     main()
