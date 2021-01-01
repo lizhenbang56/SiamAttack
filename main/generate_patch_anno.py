@@ -89,27 +89,59 @@ def generate_random_trajectory(start_y, length, bound_y):
 
 
 def run_per_video(anno, resolution):
-    """"""
+    """
+    return: [xywh], 每帧的 FGT
+    """
     """START：确定在第一帧中的起点"""
     patch_gt_xywh_start_in_original_img = get_init_patch_box_in_original_img(anno[0])
     x1_start, y1_start, patch_w, patch_h = patch_gt_xywh_start_in_original_img
+    x2_start = x1_start + patch_w
+    y2_start = y1_start + patch_h
     """END：确定在第一帧中的起点"""
 
-    """START：确定在最后一帧的终点"""
-    if x1_start + patch_w/2 > (resolution[0]-(x1_start + patch_w/2)):
-        x1_end = 0
+    """START：确定补丁与物体的相对位置关系"""
+    im_w, im_h = resolution
+    direction = None
+    if patch_w >= patch_h and y1_start >= im_h - y2_start:
+        direction = 'up'
+    elif patch_w >= patch_h and y1_start < im_h - y2_start:
+        direction = 'down'
+    elif patch_w < patch_h and x1_start >= im_w - x2_start:
+        direction = 'left'
+    elif patch_w < patch_h and x1_start < im_w - x2_start:
+        direction = 'right'
     else:
-        x1_end = int(resolution[0]-patch_w/2)
-    """END：确定在最后一帧的终点"""
+        assert patch_gt_xywh_start_in_original_img
+    delta = 16
+    """END：确定补丁与物体的相对位置关系"""
 
-    """START：插值得到每帧边框"""
-    x_list = np.linspace(x1_start, x1_end, len(anno))
-    y_list = generate_random_trajectory(y1_start, len(anno), int(resolution[1]-patch_h/2))
-    w_list = np.linspace(patch_w, patch_w, len(anno))
-    h_list = np.linspace(patch_h, patch_h, len(anno))
-    patch_anno = np.stack((x_list, y_list, w_list, h_list)).T
-    """END：插值得到每帧边框"""
-    return patch_anno
+    patch_anno_x1 = []
+    patch_anno_y1 = []
+    patch_anno_w = np.linspace(patch_w, 64, len(anno))
+    patch_anno_h = np.linspace(patch_h, 64, len(anno))
+    for i, gt in enumerate(anno):
+        x1, y1, w, h = gt
+        x2 = x1 + w
+        y2 = y1 + h
+        if direction == 'up':
+            fgt_x1y1 = [x1, y1-delta-patch_anno_h[i]]
+        elif direction == 'down':
+            fgt_x1y1 = [x1, y2+delta]
+        elif direction == 'left':
+            fgt_x1y1 = [x1-delta-patch_anno_w[i], y1]
+        elif direction == 'right':
+            fgt_x1y1 = [x2+delta, y1]
+        else:
+            assert False, direction
+        assert fgt_x1y1 is not None
+        patch_anno_x1.append(fgt_x1y1[0])
+        patch_anno_y1.append(fgt_x1y1[1])
+    patch_anno_x1 = np.array(patch_anno_x1)
+    patch_anno_y1 = np.array(patch_anno_y1)
+
+    patch_anno = np.stack((patch_anno_x1, patch_anno_y1, patch_anno_w, patch_anno_h)).T
+
+    return np.array(patch_anno)
 
 
 def generate_patch_anno(save_dir, visualize_flag):
