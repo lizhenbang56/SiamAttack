@@ -9,7 +9,7 @@ def visualize_uap(patch, name):
     """
     patch: [batch, 3, 303, 303], torch.tensor
     """
-    img = np.ascontiguousarray(patch[0].data.cpu().numpy().transpose(1,2,0))
+    img = np.ascontiguousarray(patch[0].data.cpu().numpy().transpose(1, 2, 0))
     if name == 'x':
         base_img = np.ones_like(img)
     elif name == 'z':
@@ -18,17 +18,24 @@ def visualize_uap(patch, name):
         assert False, name
     img = np.clip(img + base_img, 0, 255).astype(np.uint8)
 
-    """START：计算 MSE"""
-    MSE = np.mean((img-base_img)**2)
-    """END：计算 MSE"""
+    """START：计算 mse"""
+    mse = np.mean((img - base_img) ** 2)
+    """END：计算 mse"""
 
-    """START：计算 SSIM"""
-    SSIM = compare_ssim(img, base_img, multichannel=True)
-    """END：计算 SSIM"""
+    """START：计算 ssim"""
+    ssim = compare_ssim(img, base_img, multichannel=True)
+    """END：计算 ssim"""
 
-    print('{}: MSE={:.2f}, SSIM={:.2f}'.format(name, MSE, SSIM))
+    print('{}: mse={:.2f}, ssim={:.2f}'.format(name, mse, ssim))
 
-    assert cv2.imwrite('/tmp/{}_{}.jpg'.format(name, num), img)
+    """START：保存可视化结果"""
+    save_root = os.path.join(root, 'visualization', str(num), 'uap')
+    if not os.path.exists(save_root):
+        os.makedirs(save_root)
+    save_path = os.path.join(save_root, '{}.jpg'.format(name))
+    assert cv2.imwrite(save_path, img)
+    """END：保存可视化结果"""
+
     return
 
 
