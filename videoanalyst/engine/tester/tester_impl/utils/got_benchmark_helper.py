@@ -94,20 +94,35 @@ class PipelineTracker(object):
             image = cv2.imread(img_file, cv2.IMREAD_COLOR)
 
             start_time = time.time()
+
+            """START：定义可视化文件夹"""
+            visualize_flag = True
+            if visualize_flag:
+                vis_save_dir = os.path.join(self.pipeline.uap_root, 'visualization',
+                                            str(self.pipeline.loop_num), video_name)
+                if not os.path.exists(vis_save_dir):
+                    os.makedirs(vis_save_dir)
+            """END：定义可视化文件夹"""
+
             if f == 0:
                 self.init(image, box)
+
+                """START：可视化模板图像"""
+                if visualize_flag:
+                    visualize_template_img(self.pipeline._state['adv_template_img'], vis_save_dir, f)
+                """END：可视化模板图像"""
+
             else:
                 boxes[f, :] = self.update(image)
 
-                """START：可视化模板/搜索图像"""
-                visualize_flag = False
+                """START：可视化搜索图像"""
                 if visualize_flag:
                     visualize_search_img(self.pipeline._state['adv_search_img'],
-                                         self.pipeline._state['best_box_xyxy_in_search_img'])
-                    visualize_template_img(self.pipeline._state['adv_template_img'])
-                    visualize_cls_map(self.pipeline._state['cls_pred'], 'cls_pred')
-                    visualize_cls_map(self.pipeline._state['ctr_pred'], 'ctr_pred')
-                """END：可视化模板/搜索图像"""
+                                         self.pipeline._state['best_box_xyxy_in_search_img'],
+                                         vis_save_dir, f)
+                    visualize_cls_map(self.pipeline._state['cls_pred'], 'cls_pred', vis_save_dir, f)
+                    visualize_cls_map(self.pipeline._state['ctr_pred'], 'ctr_pred', vis_save_dir, f)
+                """END：可视化搜索图像"""
 
             times[f] = time.time() - start_time
 

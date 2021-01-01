@@ -13,17 +13,18 @@ from videoanalyst.pipeline.utils import (cxywh2xywh, get_crop,
                                          xywh2cxywh, xyxy2cxywh, xyxy2xywh)
 
 
-def _point_from_orginal_img_to_search_img(point_in_original_img,
-                                          target_pos,
-                                          scale_x, x_size):
+def _point_from_original_img_to_search_img(point_in_original_img,
+                                           target_pos,
+                                           scale_x, x_size):
     """
-    :param point: 原始图像中的一个点
-    :type point:
+    :param point_in_original_img: 原始图像中的一个点
+    :type point_in_original_img:
     :param target_pos: 以该点为中心裁剪搜索图像。
     :type target_pos:
     :return:
     :rtype:
     """
+
     def _coordinate_from_orginal_img_to_search_img(a, b):
         return int((a + (x_size // 2) / scale_x - b) * np.float(scale_x))
 
@@ -105,10 +106,10 @@ class SiamFCppTracker(PipelineBase):
         self.set_model(self._model)
 
         """START：读入扰动"""
-        loop_num = 32768
+        self.loop_num = 32768
         self.uap_root = '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots/train_set=fulldata_FGSM_cls=1_ctr=1_reg=1_l2_z=0.005_l2_x=1e-05_lr_z=0.1_lr_x=0.5'
-        patch_x_path = os.path.join(self.uap_root, 'x_{}'.format(loop_num))
-        uap_z_path = os.path.join(self.uap_root, 'z_{}'.format(loop_num))
+        patch_x_path = os.path.join(self.uap_root, 'x_{}'.format(self.loop_num))
+        uap_z_path = os.path.join(self.uap_root, 'z_{}'.format(self.loop_num))
         self.patch_x = torch.load(patch_x_path, map_location='cpu')
         self.uap_z = torch.load(uap_z_path, map_location='cpu')
         print('loading: ', patch_x_path, uap_z_path)
@@ -134,11 +135,11 @@ class SiamFCppTracker(PipelineBase):
     def update_params(self):
         hps = self._hyper_params
         hps['score_size'] = (
-            hps['x_size'] -
-            hps['z_size']) // hps['total_stride'] + 1 - hps['num_conv3x3'] * 2
+                                    hps['x_size'] -
+                                    hps['z_size']) // hps['total_stride'] + 1 - hps['num_conv3x3'] * 2
         hps['score_offset'] = (
-            hps['x_size'] - 1 -
-            (hps['score_size'] - 1) * hps['total_stride']) // 2
+                                      hps['x_size'] - 1 -
+                                      (hps['score_size'] - 1) * hps['total_stride']) // 2
         self._hyper_params = hps
 
     def feature(self, im: np.array, target_pos, target_sz, avg_chans=None):
@@ -184,7 +185,7 @@ class SiamFCppTracker(PipelineBase):
             """END：添加扰动"""
 
             """START：保存模板图像"""
-            self._state['adv_template_img'] = np.ascontiguousarray(data[0].cpu().numpy().transpose(1,2,0))
+            self._state['adv_template_img'] = np.ascontiguousarray(data[0].cpu().numpy().transpose(1, 2, 0))
             """END：保存模板图像"""
 
             features = self._model(data, phase=phase)
@@ -266,8 +267,8 @@ class SiamFCppTracker(PipelineBase):
         patch_gt_x2_ori = patch_gt_x1_ori + patch_gt_w_ori
         patch_gt_y2_ori = patch_gt_y1_ori + patch_gt_h_ori
         # 将补丁在原图上的位置转换为在搜索图像上的位置
-        x1, y1 = _point_from_orginal_img_to_search_img([patch_gt_x1_ori, patch_gt_y1_ori], target_pos, scale_x, x_size)
-        x2, y2 = _point_from_orginal_img_to_search_img([patch_gt_x2_ori, patch_gt_y2_ori], target_pos, scale_x, x_size)
+        x1, y1 = _point_from_original_img_to_search_img([patch_gt_x1_ori, patch_gt_y1_ori], target_pos, scale_x, x_size)
+        x2, y2 = _point_from_original_img_to_search_img([patch_gt_x2_ori, patch_gt_y2_ori], target_pos, scale_x, x_size)
         w = x2 - x1
         h = y2 - y1
         """START：得到补丁相对于搜索图像的位置"""
@@ -320,7 +321,7 @@ class SiamFCppTracker(PipelineBase):
             self._state['all_box'] = box
             self._state['cls'] = cls
             self._state['ctr'] = ctr
-            self._state['adv_search_img'] = np.ascontiguousarray(data[0].cpu().numpy().transpose(1,2,0))
+            self._state['adv_search_img'] = np.ascontiguousarray(data[0].cpu().numpy().transpose(1, 2, 0))
             self._state['best_box_xyxy_in_search_img'] = box[best_pscore_id]
             self._state['cls_pred'] = cls[:, 0]
             self._state['ctr_pred'] = ctr[:, 0]
@@ -387,6 +388,7 @@ class SiamFCppTracker(PipelineBase):
             pscore: (HW, ), penalized score
             penalty: (HW, ), penalty due to scale/ratio change
         """
+
         def change(r):
             return np.maximum(r, 1. / r)
 
@@ -415,7 +417,7 @@ class SiamFCppTracker(PipelineBase):
         # cos window (motion model)
         window_influence = self._hyper_params['window_influence']
         pscore = pscore * (
-            1 - window_influence) + self._state['window'] * window_influence
+                1 - window_influence) + self._state['window'] * window_influence
         best_pscore_id = np.argmax(pscore)
 
         return best_pscore_id, pscore, penalty
