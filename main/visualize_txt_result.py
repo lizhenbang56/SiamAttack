@@ -51,20 +51,36 @@ def visualize(pred, gt, fgt, video_name, dataset_dir, overwrite):
         """END：更新轨迹图像"""
 
         """START：图像融合"""
+        if img.size != trajectory.size:
+            print('Wrong image size', img_path, img.size, trajectory.size)
+            img = img.resize(trajectory.size)
         img = Image.alpha_composite(img, trajectory)
         """END：图像融合"""
 
-        # img = img.resize((200, 150))
         img_list.append(img)
+
+    """START：保存"""
+    save_dir = None
+    if save_mode == '.png':
+        save_dir = os.path.join(save_root, video_name)
+    elif save_mode == '.gif':
+        save_dir = save_root
+    else:
+        assert False, save_dir
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
-    timestamp = time.strftime("%Y%m%d%H%M%S", time.localtime())
-    file_path = os.path.join(save_dir, video_name + '_{}'.format(timestamp) + '.gif')
-    if os.path.isfile(file_path) and not overwrite:
-        print('Already exists:', end=' ')
-    else:
+    print(save_dir)
+    if save_mode == '.gif':
+        file_path = os.path.join(save_dir, video_name + save_mode)
+        if os.path.isfile(file_path) and not overwrite:
+            print('Already exists:', end=' ')
         img_list[0].save(file_path, save_all=True, append_images=img_list[1:], quality=50)
-    print(file_path)
+    elif save_mode == '.png':
+        for i, img in enumerate(img_list):
+            save_path = os.path.join(save_dir, str(i) + save_mode)
+            img.save(save_path)
+    """END：保存"""
+
     return
 
 
@@ -93,8 +109,9 @@ def visualize_txt_result(overwrite):
 if __name__ == '__main__':
     root = '/home/etvuz/projects/adversarial_attack/'
     dataset_root = os.path.join(root, 'video_analyst/datasets/GOT-10k')
-    pred_dir = os.path.join(root, 'video_analyst/logs/GOT-Benchmark/result/GOT-10k/siamfcpp_googlenet')
-    save_dir = '/tmp/uap_vis_txt'
+    pred_dir = os.path.join(root, 'video_analyst/snapshots/train_set=fulldata_FGSM_cls=1_ctr=1_reg=1_l2_z=0.005_l2_x=1e-05_lr_z=0.1_lr_x=0.5/result/32768')
+    save_root = os.path.join(root, 'video_analyst/snapshots/train_set=fulldata_FGSM_cls=1_ctr=1_reg=1_l2_z=0.005_l2_x=1e-05_lr_z=0.1_lr_x=0.5/visualization/32768/txt')
+    save_mode = '.png'  # or .gif
     fgt_root = os.path.join(root, 'patch_anno')
     got10k_tool = ExperimentGOT10k(dataset_root, subset='val')
     visualize_txt_result(overwrite=True)
