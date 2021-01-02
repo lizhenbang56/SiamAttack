@@ -96,7 +96,7 @@ class PipelineTracker(object):
             start_time = time.time()
 
             """START：定义可视化文件夹"""
-            visualize_flag = True
+            visualize_flag = False
             if visualize_flag:
                 vis_save_dir = os.path.join(self.pipeline.uap_root, 'visualization',
                                             str(self.pipeline.loop_num), video_name)
