@@ -6,9 +6,10 @@ import numpy as np
 from videoanalyst.evaluation.got_benchmark.utils.metrics import rect_iou
 from videoanalyst.evaluation.got_benchmark.datasets import GOT10k
 from videoanalyst.evaluation.got_benchmark.experiments.got10k import ExperimentGOT10k
+from videoanalyst.evaluation.got_benchmark.experiments.otb import ExperimentOTB
 
 
-def eval():
+def eval_got10k_val():
     """"""
     fgt_paths = sorted(glob.glob(os.path.join(FGT_root, "*.txt")))
     pred_paths = sorted(glob.glob(os.path.join(result_root, '*/*_001.txt')))
@@ -55,11 +56,37 @@ def eval():
     return
 
 
+def eval_otb_2015(false_ground_truth):
+    experiment = ExperimentOTB('/home/etvuz/projects/adversarial_attack/video_analyst/datasets/OTB/OTB2015',
+                               version=2015,
+                               result_dir=os.path.join(root, 'video_analyst/logs/GOT-Benchmark/result'),
+                               FGT=false_ground_truth)
+    eval_result = experiment.report(['siamfcpp_googlenet'])['siamfcpp_googlenet']['overall']
+    if false_ground_truth:
+        phase = 'FGT'
+    else:
+        phase = 'GT'
+    print('{} Success={:.3f}, Precision={:.3f}, {} FPS'.format(phase, eval_result['success_score'],
+                                                            eval_result['precision_score'],
+                                                            int(eval_result['speed_fps'])))
+
+
 if __name__ == '__main__':
+    dataset_name = 'OTB_2015'
     root = '/home/etvuz/projects/adversarial_attack'
-    result_root = os.path.join(root,
-                               'video_analyst/snapshots/train_set=fulldata_FGSM_cls=1_ctr=1_reg=1_l2_z=0.005_l2_x=1e-05_lr_z=0.1_lr_x=0.5/result/32768')
-    FGT_root = os.path.join(root, 'patch_anno')
-    experimentGOT10k = ExperimentGOT10k(os.path.join(root, 'video_analyst/datasets/GOT-10k'), subset='val')
-    dataset = GOT10k(os.path.join(root, 'video_analyst/datasets/GOT-10k'), subset='val', return_meta=True)
-    eval()
+    if dataset_name == 'OTB_2015':
+        result_root = os.path.join(root, 'video_analyst/logs/GOT-Benchmark/result/otb2015/siamfcpp_googlenet')
+        eval_otb_2015(false_ground_truth=True)
+        eval_otb_2015(false_ground_truth=False)
+    elif dataset_name == 'GOT-10k_Val':
+        result_root = os.path.join(
+            root,
+            'video_analyst/snapshots/train_set=fulldata_FGSM_cls=1_ctr=1_reg=1_l2_z=0.005_l2_x=1e-05_lr_z=0.1_lr_x=0.5/'
+            'result/32768')
+        dataset = GOT10k(os.path.join(root, 'video_analyst/datasets/GOT-10k'), subset='val', return_meta=True)
+        experimentGOT10k = ExperimentGOT10k(os.path.join(root, 'video_analyst/datasets/GOT-10k'), subset='val')
+        FGT_root = os.path.join(root, 'patch_anno', dataset_name)
+        eval_got10k_val()
+    else:
+        assert False, dataset_name
+

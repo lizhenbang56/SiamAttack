@@ -1,13 +1,12 @@
 import os
 import glob
-import time
-import imageio
 import numpy as np
 from PIL import Image, ImageDraw
 
 from videoanalyst.pipeline.utils import xywh2xyxy, xywh2cxywh
 from videoanalyst.evaluation.got_benchmark.utils.metrics import rect_iou
 from videoanalyst.evaluation.got_benchmark.experiments.got10k import ExperimentGOT10k
+from videoanalyst.evaluation.got_benchmark.experiments.otb import ExperimentOTB
 
 
 def visualize(pred, gt, fgt, video_name, dataset_dir, overwrite):
@@ -86,14 +85,21 @@ def visualize(pred, gt, fgt, video_name, dataset_dir, overwrite):
 
 def cal_ao(gt, pred):
     seq_ious = [rect_iou(pred[1:], gt[1:])]
-    ao, sr, speed, _ = got10k_tool._evaluate(ious=np.concatenate(seq_ious), times=[])
+    ao, sr, speed, _ = dataset_tool._evaluate(ious=np.concatenate(seq_ious), times=[])
     return ao
 
 
 def run_per_video(video_name, gt, overwrite):
-    phase = video_name.split('_')[1].lower()
-    dataset_dir = os.path.join(dataset_root, phase, video_name)
-    pred_txt_path = os.path.join(pred_dir, video_name, video_name + "_001.txt")
+    if dataset_name == 'OTB_2015':
+        video_name = video_name.split('.')[0]
+        dataset_dir = os.path.join(dataset_root, video_name, 'img')
+        pred_txt_path = os.path.join(pred_dir, video_name + '.txt')
+    elif dataset_name == 'GOT10k_Val':
+        phase = video_name.split('_')[1].lower()
+        dataset_dir = os.path.join(dataset_root, phase, video_name)
+        pred_txt_path = os.path.join(pred_dir, video_name, video_name + "_001.txt")
+    else:
+        assert False, dataset_name
     fgt_txt_path = os.path.join(fgt_root, video_name + '.txt')
     pred = np.loadtxt(pred_txt_path, delimiter=',')
     fgt = np.loadtxt(fgt_txt_path, delimiter=',')
@@ -102,16 +108,31 @@ def run_per_video(video_name, gt, overwrite):
 
 def visualize_txt_result(overwrite):
     video_names = sorted(os.listdir(pred_dir))
-    for video_name, gt in zip(video_names, got10k_tool.dataset):
+    for video_name, gt in zip(video_names, dataset_tool.dataset):
         run_per_video(video_name, gt[1], overwrite)
 
 
 if __name__ == '__main__':
+    """START：设定数据集名称"""
+    dataset_name = 'OTB_2015'
+    print('Dataset Name:', dataset_name)
+    save_mode = '.gif'  # .png or .gif
+    """END：设定数据集名称"""
+
     root = '/home/etvuz/projects/adversarial_attack/'
-    dataset_root = os.path.join(root, 'video_analyst/datasets/GOT-10k')
-    pred_dir = os.path.join(root, 'video_analyst/snapshots/train_set=fulldata_FGSM_cls=1_ctr=1_reg=1_l2_z=0.005_l2_x=1e-05_lr_z=0.1_lr_x=0.5/result/32768')
-    save_root = os.path.join(root, 'video_analyst/snapshots/train_set=fulldata_FGSM_cls=1_ctr=1_reg=1_l2_z=0.005_l2_x=1e-05_lr_z=0.1_lr_x=0.5/visualization/32768/txt')
-    save_mode = '.png'  # or .gif
-    fgt_root = os.path.join(root, 'patch_anno')
-    got10k_tool = ExperimentGOT10k(dataset_root, subset='val')
+    if dataset_name == 'OTB_2015':
+        dataset_root = os.path.join(root, 'video_analyst/datasets/OTB/OTB2015')
+        dataset_tool = ExperimentOTB(dataset_root, version=2015)
+        pred_dir = os.path.join(root, 'video_analyst/logs/GOT-Benchmark/result/otb2015/siamfcpp_googlenet')
+    elif dataset_name == 'GOT-10k_Val':
+        dataset_root = os.path.join(root, 'video_analyst/datasets/GOT-10k')
+        dataset_tool = ExperimentGOT10k(dataset_root, subset='val')
+        pred_dir = os.path.join(root, 'video_analyst/snapshots/train_set=fulldata_FGSM_cls=1_ctr=1_reg=1_l2_z=0.005_l2_x=1e-05_lr_z=0.1_lr_x=0.5/result/32768')
+    else:
+        assert False, dataset_name
+    save_root = os.path.join(
+        root,
+        'video_analyst/snapshots/train_set=fulldata_FGSM_cls=1_ctr=1_reg=1_l2_z=0.005_l2_x=1e-05_lr_z=0.1_lr_x=0.5/'
+        '{}/visualization/32768/txt'.format(dataset_name))
+    fgt_root = os.path.join(root, 'patch_anno', dataset_name)
     visualize_txt_result(overwrite=True)

@@ -40,7 +40,7 @@ class PipelineTracker(object):
             image of the first frame
         box : np.array or List
             tracking bbox on the first frame
-            formate: (x, y, w, h)
+            format: (x, y, w, h)
         """
         self.pipeline.init(image, box)
 
@@ -56,7 +56,7 @@ class PipelineTracker(object):
         -------
         np.array
             tracking bbox
-            formate: (x, y, w, h)
+            format: (x, y, w, h)
         """
         return self.pipeline.update(image)
 
@@ -78,9 +78,15 @@ class PipelineTracker(object):
             [description]
         """
         """START：读入补丁的真实位置"""
-        video_name = img_files[0].split('/')[-2]
+        dataset_name = 'OTB_2015'
+        if dataset_name == 'OTB_2015':
+            video_name = img_files[0].split('/')[-3]
+        elif dataset_name == 'GOT-10k_Val':
+            video_name = img_files[0].split('/')[-2]
+        else:
+            assert False, dataset_name
         patch_annos_path = os.path.join(
-            '/home/etvuz/projects/adversarial_attack/patch_anno/{}.txt'.format(video_name))
+            '/home/etvuz/projects/adversarial_attack/patch_anno/{}/{}.txt'.format(dataset_name, video_name))
         patch_annos = np.loadtxt(patch_annos_path, delimiter=',')
         """END：读入补丁的真实位置"""
 
@@ -102,6 +108,8 @@ class PipelineTracker(object):
                                             str(self.pipeline.loop_num), video_name)
                 if not os.path.exists(vis_save_dir):
                     os.makedirs(vis_save_dir)
+            else:
+                vis_save_dir = None
             """END：定义可视化文件夹"""
 
             if f == 0:

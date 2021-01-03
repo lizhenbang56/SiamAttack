@@ -69,7 +69,7 @@ class OTB(object):
         'tb100': __tb100_seqs
     }
 
-    def __init__(self, root_dir, version=2015, download=True):
+    def __init__(self, root_dir, version=2015, download=True, FGT=False):
         super(OTB, self).__init__()
         assert version in self.__version_dict
 
@@ -80,15 +80,39 @@ class OTB(object):
         self._check_integrity(root_dir, version)
 
         valid_seqs = self.__version_dict[version]
-        self.anno_files = sorted(
-            list(
-                chain.from_iterable(
-                    glob.glob(os.path.join(root_dir, s, 'groundtruth*.txt'))
-                    for s in valid_seqs)))
+
+        """START：读入真正标签或虚假标签"""
+        if not FGT:
+            # 如果采用真实 GT
+            self.anno_files = sorted(
+                list(
+                    chain.from_iterable(
+                        glob.glob(os.path.join(root_dir, s, 'groundtruth*.txt'))
+                        for s in valid_seqs)))
+            self.real_anno_files = self.anno_files
+        else:
+            # 如果采用 FGT
+            self.real_anno_files = sorted(
+                list(
+                    chain.from_iterable(
+                        glob.glob(os.path.join(root_dir, s, 'groundtruth*.txt'))
+                        for s in valid_seqs)))
+            valid_seqs.remove('Jogging')
+            valid_seqs.remove('Skating2')
+            valid_seqs += ['Jogging.1', 'Jogging.2', 'Skating2.1', 'Skating2.2']
+            self.anno_files = sorted(
+                list(
+                    chain.from_iterable(
+                        glob.glob(os.path.join(
+                            '/home/etvuz/projects/adversarial_attack/patch_anno/OTB_{}'.format(version),
+                            '{}.txt'.format(s)))
+                        for s in valid_seqs)))
+        """START：读入真正标签或虚假标签"""
+
         # remove empty annotation files
         # (e.g., groundtruth_rect.1.txt of Human4)
         self.anno_files = self._filter_files(self.anno_files)
-        self.seq_dirs = [os.path.dirname(f) for f in self.anno_files]
+        self.seq_dirs = [os.path.dirname(f) for f in self.real_anno_files]
         self.seq_names = [os.path.basename(d) for d in self.seq_dirs]
         # rename repeated sequence names
         # (e.g., Jogging and Skating2)

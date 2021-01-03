@@ -60,13 +60,29 @@ python main/test.py --config experiments/siamfcpp/train/got10k/siamfcpp_googlene
 ### 生成 Fake Ground Truth
 
 ```bash
-python videoanalyst/pipeline/utils/generate_patch_anno.py
+[修改相应路径] python videoanalyst/pipeline/utils/generate_patch_anno.py
 数据位于 /home/etvuz/projects/adversarial_attack/patch_anno/OTB_2015
+```
+
+### 使得测试代码正确读入 FGT
+
+```bash
+got_benchmark_helper.py/PipelineTracker/track():dataset_name = 'OTB_2015'
 ```
 
 ### 测试
 
 ```bash
+在配置文件中指定正确的预训练模型: /home/etvuz/projects/adversarial_attack/video_analyst/models/siamfcpp/siamfcpp-googlenet-got-md5_e182dc4c3823427022eccf7313d740a7.pkl
+source activate pytorch1.4_python3.7
+cd /home/etvuz/projects/adversarial_attack/video_analyst
+python main/test.py --config experiments/siamfcpp/test/otb/siamfcpp_googlenet-otb.yaml
+```
+
+### 评估
+
+```bash
+[修改 dataset_name] python main/eval.py
 ```
 
 # 实时评估

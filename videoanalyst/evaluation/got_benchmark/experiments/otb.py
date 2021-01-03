@@ -28,9 +28,10 @@ class ExperimentOTB(object):
                  root_dir,
                  version=2015,
                  result_dir='results',
-                 report_dir='reports'):
+                 report_dir='reports',
+                 FGT=False):
         super(ExperimentOTB, self).__init__()
-        self.dataset = OTB(root_dir, version, download=True)
+        self.dataset = OTB(root_dir, version, download=False, FGT=FGT)
         dump_dirname = ('OTB' +
                         str(version)) if isinstance(version, int) else version
         self.result_dir = os.path.join(result_dir, dump_dirname)
