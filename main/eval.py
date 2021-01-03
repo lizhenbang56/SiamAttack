@@ -50,9 +50,10 @@ def eval_got10k_val():
     fgt_ious = np.concatenate(list(fgt_ious.values()))
     gt_ious = np.concatenate(list(gt_ious.values()))
     times = np.concatenate(list(times.values()))
-    fgt_ao, fgt_sr, fgt_speed, fgt_succ_curve = experimentGOT10k._evaluate(fgt_ious, times)
-    gt_ao, gt_sr, gt_speed, gt_succ_curve = experimentGOT10k._evaluate(gt_ious, times)
-    print('FGT_AO={:.3f}\tGT_AO={:.3f}'.format(fgt_ao, gt_ao))
+    fgt_ao, fgt_sr_50, fgt_speed, fgt_succ_curve = experimentGOT10k._evaluate(fgt_ious, times)
+    gt_ao, gt_sr_50, gt_speed, gt_succ_curve = experimentGOT10k._evaluate(gt_ious, times)
+    print('FGT AO={:.3f} SR50={:.3f}'.format(fgt_ao, fgt_sr_50))
+    print('GT AO={:.3f} SR50={:.3f}'.format(gt_ao, gt_sr_50))
     return
 
 
@@ -72,7 +73,7 @@ def eval_otb_2015(false_ground_truth):
 
 
 if __name__ == '__main__':
-    dataset_name = 'OTB_2015'
+    dataset_name = 'GOT-10k_Val'  # 'OTB_2015' or 'GOT-10k_Val'
     root = '/home/etvuz/projects/adversarial_attack'
     if dataset_name == 'OTB_2015':
         result_root = os.path.join(root, 'video_analyst/logs/GOT-Benchmark/result/otb2015/siamfcpp_googlenet')
