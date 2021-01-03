@@ -167,6 +167,9 @@ def generate_patch_anno(save_root, visualize_flag):
         save_path = os.path.join(save_dir, seq_name + '.txt')
         print(save_path)
         np.savetxt(save_path, patch_anno, fmt='%d', delimiter=',')
+        # 对 OTB2015 数据集 的 Jogging 视频进行特殊处理
+        if seq_name == 'Jogging.1.txt':
+            np.savetxt(os.path.join(save_dir, 'Jogging.txt'), patch_anno, fmt='%d', delimiter=',')
         """END：将补丁中心点保存为 txt"""
 
         """START：可视化"""
