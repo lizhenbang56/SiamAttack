@@ -2,8 +2,8 @@
 现存的问题：可视化的结果是，补丁的宽高已知且固定。但实际上补丁的宽高收到缩放影响，因此在跟踪时才能确定。
 版本改进20201222：因为我们训练了一个可以缩放的补丁，所以希望GT相对原始图像是尺寸固定的。这样可以避免补丁越来越大/小。
 改进版本20201229：轨迹随机化
+改进版本20210103：为其他数据集生成 FGT。
 """
-import re
 import os
 import random
 import copy
@@ -11,7 +11,7 @@ import imageio
 import numpy as np
 from PIL import Image, ImageDraw
 
-from videoanalyst.evaluation.got_benchmark.datasets import GOT10k
+from videoanalyst.evaluation.got_benchmark.datasets import GOT10k, OTB
 from videoanalyst.pipeline.utils import (xywh2cxywh, xywh2xyxy)
 
 
@@ -71,7 +71,6 @@ def get_init_patch_box_in_original_img(gt_xywh_in_original_img):
     return patch_gt_xywh_ori
 
 
-
 def generate_random_trajectory(start_y, length, bound_y):
     y = start_y
     result = []
@@ -86,10 +85,9 @@ def generate_random_trajectory(start_y, length, bound_y):
     return np.array(result)
 
 
-
-
 def run_per_video(anno, resolution):
     """
+    resolution: wh
     return: [xywh], 每帧的 FGT
     """
     """START：确定在第一帧中的起点"""
@@ -144,18 +142,27 @@ def run_per_video(anno, resolution):
     return np.array(patch_anno)
 
 
-def generate_patch_anno(save_dir, visualize_flag):
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
+def generate_patch_anno(save_root, visualize_flag):
+    """"""
+    """START：生成指定数据库"""
+    if dataset_name == 'GOT-10k_Val':
+        dataset = GOT10k('/home/zhbli/Dataset/data2/got10k', subset='val', return_meta=False)
+    elif dataset_name == 'OTB_2015':
+        dataset = OTB('/home/etvuz/projects/adversarial_attack/video_analyst/datasets/OTB/OTB2015',
+                      version=2015, download=False)
+    else:
+        assert False, dataset_name
+    """END：生成指定数据库"""
 
-    dataset = GOT10k('/home/zhbli/Dataset/data2/got10k', subset='val', return_meta=True)
-    for s, (_, anno, meta) in enumerate(dataset):
+    for s, (img_paths, anno) in enumerate(dataset):
         # anno: xywh
-        _, im_w_str, im_h_str, _ = re.split("[',()]", meta['resolution'])
-        resolution = (int(im_w_str), int(im_h_str))
+        resolution = Image.open(img_paths[0]).size  # wh
         patch_anno = run_per_video(anno, resolution)  # xywh
 
         """START：将补丁中心点保存为 txt"""
+        save_dir = os.path.join(save_root, dataset_name)
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
         seq_name = dataset.seq_names[s]
         save_path = os.path.join(save_dir, seq_name + '.txt')
         print(save_path)
@@ -178,5 +185,6 @@ def test_get_crop():
 
 
 if __name__ == '__main__':
-    generate_patch_anno(save_dir='/home/etvuz/projects/adversarial_attack/patch_anno', visualize_flag=False)
+    dataset_name = 'OTB_2015'
+    generate_patch_anno(save_root='/home/etvuz/projects/adversarial_attack/patch_anno', visualize_flag=False)
     # test_get_crop()
