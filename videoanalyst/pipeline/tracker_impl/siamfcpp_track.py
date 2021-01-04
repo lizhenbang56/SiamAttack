@@ -105,16 +105,21 @@ class SiamFCppTracker(PipelineBase):
         self.debug = False
         self.set_model(self._model)
 
+        self.do_attack = False
+
         """START：读入扰动"""
-        self.loop_num = 32768
-        self.uap_root = '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots/train_set=fulldata_FGSM_cls=1_ctr=1_reg=1_l2_z=0.005_l2_x=1e-05_lr_z=0.1_lr_x=0.5'
-        patch_x_path = os.path.join(self.uap_root, 'x_{}'.format(self.loop_num))
-        uap_z_path = os.path.join(self.uap_root, 'z_{}'.format(self.loop_num))
-        self.patch_x = torch.load(patch_x_path, map_location='cpu')
-        self.uap_z = torch.load(uap_z_path, map_location='cpu')
-        print('loading: ', patch_x_path, uap_z_path)
-        assert self.patch_x.shape[-1] == 128
-        """END：读入扰动"""
+        if self.do_attack:
+            self.loop_num = 32768
+            self.uap_root = '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots/train_set=fulldata_FGSM_cls=1_ctr=1_reg=1_l2_z=0.005_l2_x=1e-05_lr_z=0.1_lr_x=0.5'
+            patch_x_path = os.path.join(self.uap_root, 'x_{}'.format(self.loop_num))
+            uap_z_path = os.path.join(self.uap_root, 'z_{}'.format(self.loop_num))
+            self.patch_x = torch.load(patch_x_path, map_location='cpu')
+            self.uap_z = torch.load(uap_z_path, map_location='cpu')
+            print('loading: ', patch_x_path, uap_z_path)
+            assert self.patch_x.shape[-1] == 128
+            """END：读入扰动"""
+        else:
+            print('NO ATTACK')
         return
 
     def set_model(self, model):
@@ -181,7 +186,8 @@ class SiamFCppTracker(PipelineBase):
             data = imarray_to_tensor(im_z_crop).to(self.device)
 
             """START：添加扰动"""
-            data += self.uap_z.to(self.device)
+            if self.do_attack:
+                data += self.uap_z.to(self.device)
             """END：添加扰动"""
 
             """START：保存模板图像"""
@@ -261,24 +267,26 @@ class SiamFCppTracker(PipelineBase):
         )
         self._state["scale_x"] = deepcopy(scale_x)
 
-        """START：得到补丁相对于搜索图像的位置"""
-        # 获得补丁在原图上的位置（即相对于原图的 FGT）
-        patch_gt_x1_ori, patch_gt_y1_ori, patch_gt_w_ori, patch_gt_h_ori = self._model.patch_gt_xywh_ori
-        patch_gt_x2_ori = patch_gt_x1_ori + patch_gt_w_ori
-        patch_gt_y2_ori = patch_gt_y1_ori + patch_gt_h_ori
-        # 将补丁在原图上的位置转换为在搜索图像上的位置
-        x1, y1 = _point_from_original_img_to_search_img([patch_gt_x1_ori, patch_gt_y1_ori], target_pos, scale_x, x_size)
-        x2, y2 = _point_from_original_img_to_search_img([patch_gt_x2_ori, patch_gt_y2_ori], target_pos, scale_x, x_size)
-        w = x2 - x1
-        h = y2 - y1
-        """START：得到补丁相对于搜索图像的位置"""
+        if self.do_attack:
+            """START：得到补丁相对于搜索图像的位置"""
+            # 获得补丁在原图上的位置（即相对于原图的 FGT）
+            patch_gt_x1_ori, patch_gt_y1_ori, patch_gt_w_ori, patch_gt_h_ori = self._model.patch_gt_xywh_ori
+            patch_gt_x2_ori = patch_gt_x1_ori + patch_gt_w_ori
+            patch_gt_y2_ori = patch_gt_y1_ori + patch_gt_h_ori
+            # 将补丁在原图上的位置转换为在搜索图像上的位置
+            x1, y1 = _point_from_original_img_to_search_img([patch_gt_x1_ori, patch_gt_y1_ori], target_pos, scale_x, x_size)
+            x2, y2 = _point_from_original_img_to_search_img([patch_gt_x2_ori, patch_gt_y2_ori], target_pos, scale_x, x_size)
+            w = x2 - x1
+            h = y2 - y1
+            """START：得到补丁相对于搜索图像的位置"""
 
         """START：在搜索图像添加对抗补丁"""
         data = imarray_to_tensor(im_x_crop).to(self.device)  # [1,3,h,w]
-        try:
-            data[0, :, y1:y2, x1:x2] = torch.nn.functional.interpolate(self.patch_x, (h, w)).to(self.device)
-        except Exception:
-            print('bad prediction')
+        if self.do_attack:
+            try:
+                data[0, :, y1:y2, x1:x2] = torch.nn.functional.interpolate(self.patch_x, (h, w)).to(self.device)
+            except Exception:
+                print('bad prediction')
         """END：在搜索图像添加对抗补丁"""
 
         with torch.no_grad():
