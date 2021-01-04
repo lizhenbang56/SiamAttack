@@ -7,6 +7,7 @@ from videoanalyst.evaluation.got_benchmark.utils.metrics import rect_iou
 from videoanalyst.evaluation.got_benchmark.datasets import GOT10k
 from videoanalyst.evaluation.got_benchmark.experiments.got10k import ExperimentGOT10k
 from videoanalyst.evaluation.got_benchmark.experiments.otb import ExperimentOTB
+from videoanalyst.evaluation.got_benchmark.experiments.lasot import ExperimentLaSOT
 
 
 def eval_got10k_val():
@@ -72,13 +73,45 @@ def eval_otb_2015(false_ground_truth):
                                                             int(eval_result['speed_fps'])))
 
 
+def eval_lasot():
+    experiment = ExperimentLaSOT('/home/etvuz/projects/adversarial_attack/video_analyst/datasets/LaSOT',
+                                 subset='test',
+                                 return_meta=False,
+                                 result_dir=os.path.join(root, 'video_analyst/logs/GOT-Benchmark/result_attack'))
+    eval_result = experiment.report(['siamfcpp_googlenet'])['siamfcpp_googlenet']['overall']
+    print(
+        'GT Success score={:.3f} Success rate={:.3f} Precision score={:.3f} Norm precision score={:.3f} {} FPS'.format(
+            eval_result['success_score'],
+            eval_result['success_rate'],
+            eval_result['precision_score'],
+            eval_result['normalized_precision_score'],
+            int(eval_result['speed_fps'])))
+    FGT_paths = sorted(glob.glob('/home/etvuz/projects/adversarial_attack/patch_anno/LaSOT/*.txt'))
+    annos = {}
+    for path in FGT_paths:
+        video_name = path.split('/')[-1].split('.')[0]
+        annos[video_name] = np.loadtxt(path, delimiter=',')
+    for k, v in experiment.dataset.seq_datas.items():
+        v['anno'] = annos[k]
+    eval_result = experiment.report(['siamfcpp_googlenet'])['siamfcpp_googlenet']['overall']
+    print('FGT Success score={:.3f} Success rate={:.3f} Precision score={:.3f} Norm precision score={:.3f} {} FPS'.format(
+        eval_result['success_score'],
+        eval_result['success_rate'],
+        eval_result['precision_score'],
+        eval_result['normalized_precision_score'],
+        int(eval_result['speed_fps'])))
+
+
 if __name__ == '__main__':
-    dataset_name = 'GOT-10k_Val'  # 'OTB_2015' or 'GOT-10k_Val'
+    dataset_name = 'LaSOT'  # 'OTB_2015' or 'GOT-10k_Val' or 'LaSOT'
     root = '/home/etvuz/projects/adversarial_attack'
     if dataset_name == 'OTB_2015':
         result_root = os.path.join(root, 'video_analyst/logs/GOT-Benchmark/result/otb2015/siamfcpp_googlenet')
         eval_otb_2015(false_ground_truth=True)
         eval_otb_2015(false_ground_truth=False)
+    elif dataset_name == 'LaSOT':
+        result_root = os.path.join(root, 'video_analyst/logs/GOT-Benchmark/result_attack/LaSOT/siamfcpp_googlenet')
+        eval_lasot()
     elif dataset_name == 'GOT-10k_Val':
         result_root = os.path.join(
             root,
@@ -90,4 +123,3 @@ if __name__ == '__main__':
         eval_got10k_val()
     else:
         assert False, dataset_name
-
