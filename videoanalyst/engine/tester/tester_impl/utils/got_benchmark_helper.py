@@ -78,11 +78,13 @@ class PipelineTracker(object):
             [description]
         """
         """START：读入补丁的真实位置"""
-        dataset_name = 'OTB_2015'
+        dataset_name = 'LaSOT'  # 'OTB_2015'
         if dataset_name == 'OTB_2015':
             video_name = img_files[0].split('/')[-3]
         elif dataset_name == 'GOT-10k_Val':
             video_name = img_files[0].split('/')[-2]
+        elif dataset_name == 'LaSOT':
+            video_name = img_files[0].split('/')[-3]
         else:
             assert False, dataset_name
         patch_annos_path = os.path.join(
