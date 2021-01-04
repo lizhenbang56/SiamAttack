@@ -11,7 +11,7 @@ import imageio
 import numpy as np
 from PIL import Image, ImageDraw
 
-from videoanalyst.evaluation.got_benchmark.datasets import GOT10k, OTB
+from videoanalyst.evaluation.got_benchmark.datasets import GOT10k, OTB, LaSOT
 from videoanalyst.pipeline.utils import (xywh2cxywh, xywh2xyxy)
 
 
@@ -150,6 +150,8 @@ def generate_patch_anno(save_root, visualize_flag):
     elif dataset_name == 'OTB_2015':
         dataset = OTB('/home/etvuz/projects/adversarial_attack/video_analyst/datasets/OTB/OTB2015',
                       version=2015, download=False)
+    elif dataset_name == 'LaSOT':
+        dataset = LaSOT('/home/zhbli/Dataset/data3/LASOT', subset='test', return_meta=False)
     else:
         assert False, dataset_name
     """END：生成指定数据库"""
@@ -190,6 +192,6 @@ def test_get_crop():
 
 
 if __name__ == '__main__':
-    dataset_name = 'OTB_2015'
+    dataset_name = 'LaSOT'  # 'OTB_2015'
     generate_patch_anno(save_root='/home/etvuz/projects/adversarial_attack/patch_anno', visualize_flag=False)
     # test_get_crop()
