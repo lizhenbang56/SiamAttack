@@ -22,7 +22,7 @@ test:
       task_model:
         name: "SiamTrack"
         SiamTrack:
-          pretrain_model_path: "models/siamfcpp/siamfcpp-googlenet-lasot-md5sum_434540569e163188d2bf47438e075529.pkl"
+          pretrain_model_path: "/home/etvuz/projects/adversarial_attack/video_analyst/models/siamfcpp/siamfcpp-googlenet-got-md5_e182dc4c3823427022eccf7313d740a7.pkl"
     pipeline:
       name: "SiamFCppTracker"
       SiamFCppTracker:
