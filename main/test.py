@@ -18,12 +18,10 @@ from videoanalyst.utils import complete_path_wt_root_in_cfg
 
 def make_parser():
     parser = argparse.ArgumentParser(description='Test')
-    parser.add_argument('-cfg',
-                        '--config',
-                        default='',
-                        type=str,
-                        help='experiment configuration')
-
+    parser.add_argument('-cfg', '--config', default='', type=str, help='experiment configuration')
+    parser.add_argument('--dataset_name', type=str)
+    parser.add_argument('--loop_num', type=int)
+    parser.add_argument('--do_attack', type=bool)
     return parser
 
 
@@ -77,4 +75,8 @@ if __name__ == '__main__':
     elif task == 'vos':
         testers = build_sat_tester(task_cfg)
     for tester in testers:
+        tester._pipeline.loop_num = parsed_args.loop_num
+        tester._pipeline.do_attack = parsed_args.do_attack
+        tester._pipeline.dataset_name = parsed_args.dataset_name
+        tester._pipeline.load_attack()
         tester.test()

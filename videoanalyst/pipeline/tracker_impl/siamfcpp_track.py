@@ -105,22 +105,7 @@ class SiamFCppTracker(PipelineBase):
         self.debug = False
         self.set_model(self._model)
 
-        self.do_attack = True
-
-        """START：读入扰动"""
-        if self.do_attack:
-            self.loop_num = 16384
-            self.uap_root = '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots/train_set=fulldata_FGSM_cls=1_ctr=1_reg=1_l2_z=0.005_l2_x=1e-05_lr_z=0.1_lr_x=0.5'
-            patch_x_path = os.path.join(self.uap_root, 'x_{}'.format(self.loop_num))
-            uap_z_path = os.path.join(self.uap_root, 'z_{}'.format(self.loop_num))
-            self.patch_x = torch.load(patch_x_path, map_location='cpu')
-            self.uap_z = torch.load(uap_z_path, map_location='cpu')
-            print('loading: ', patch_x_path, uap_z_path)
-            assert self.patch_x.shape[-1] == 128
-            """END：读入扰动"""
-        else:
-            print('NO ATTACK')
-        return
+        self.uap_root = '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots/train_set=fulldata_FGSM_cls=1_ctr=1_reg=1_l2_z=0.005_l2_x=1e-05_lr_z=0.1_lr_x=0.5'
 
     def set_model(self, model):
         """model to be set to pipeline. change device & turn it into eval mode
@@ -197,6 +182,19 @@ class SiamFCppTracker(PipelineBase):
             features = self._model(data, phase=phase)
 
         return features, im_z_crop, avg_chans
+
+    def load_attack(self):
+        if self.do_attack:
+            """START：读入扰动"""
+            patch_x_path = os.path.join(self.uap_root, 'x_{}'.format(self.loop_num))
+            uap_z_path = os.path.join(self.uap_root, 'z_{}'.format(self.loop_num))
+            self.patch_x = torch.load(patch_x_path, map_location='cpu')
+            self.uap_z = torch.load(uap_z_path, map_location='cpu')
+            print('loading: ', patch_x_path, uap_z_path)
+            assert self.patch_x.shape[-1] == 128
+            """END：读入扰动"""
+        else:
+            print('NO ATTACK')
 
     def init(self, im, state):
         r"""Initialize tracker

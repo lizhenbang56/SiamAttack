@@ -1,6 +1,7 @@
 import os
 import ast
 import glob
+import argparse
 import numpy as np
 
 from videoanalyst.evaluation.got_benchmark.utils.metrics import rect_iou
@@ -8,6 +9,13 @@ from videoanalyst.evaluation.got_benchmark.datasets import GOT10k
 from videoanalyst.evaluation.got_benchmark.experiments.got10k import ExperimentGOT10k
 from videoanalyst.evaluation.got_benchmark.experiments.otb import ExperimentOTB
 from videoanalyst.evaluation.got_benchmark.experiments.lasot import ExperimentLaSOT
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Eval')
+    parser.add_argument('--dataset_name', type=str, default='GOT-10k_Val')
+    parser.add_argument('--loop_num', type=int, default=8192)
+    return parser.parse_args()
 
 
 def eval_got10k_val():
@@ -103,8 +111,9 @@ def eval_lasot():
 
 
 if __name__ == '__main__':
-    dataset_name = 'GOT-10k_Val'  # 'OTB_2015' or 'GOT-10k_Val' or 'LaSOT'
-    loop_num = 16384
+    args = parse_args()
+    dataset_name = args.dataset_name
+    loop_num = args.loop_num
     root = '/home/etvuz/projects/adversarial_attack'
     if dataset_name == 'OTB_2015':
         result_root = os.path.join(root, 'video_analyst/logs/GOT-Benchmark/result/otb2015/siamfcpp_googlenet')
