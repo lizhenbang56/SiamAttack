@@ -70,7 +70,7 @@ python main/test.py --config experiments/siamfcpp/train/got10k/siamfcpp_googlene
 got_benchmark_helper.py/PipelineTracker/track():dataset_name = 'OTB_2015'
 ```
 
-## 设置是否进行攻击
+### 设置是否进行攻击
 
 ```bash
 siamfcpp_track.py/self.do_attack=True
@@ -104,6 +104,12 @@ python main/test.py --config experiments/siamfcpp/test/otb/siamfcpp_googlenet-ot
 
 ```bash
 got_benchmark_helper.py/PipelineTracker/track():dataset_name = 'LsSOT'
+```
+
+### 设置是否进行攻击
+
+```bash
+siamfcpp_track.py/self.do_attack=True
 ```
 
 ### 测试

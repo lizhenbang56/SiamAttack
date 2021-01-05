@@ -78,7 +78,7 @@ class PipelineTracker(object):
             [description]
         """
         """START：读入补丁的真实位置"""
-        dataset_name = 'OTB_2015'  # 'OTB_2015' or 'LaSOT'
+        dataset_name = 'LaSOT'  # 'OTB_2015' or 'LaSOT'
         if dataset_name == 'OTB_2015':
             video_name = img_files[0].split('/')[-3]
         elif dataset_name == 'GOT-10k_Val':
