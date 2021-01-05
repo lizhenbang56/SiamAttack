@@ -21,7 +21,7 @@ def make_parser():
     parser.add_argument('-cfg', '--config', default='', type=str, help='experiment configuration')
     parser.add_argument('--dataset_name', type=str)
     parser.add_argument('--loop_num', type=int)
-    parser.add_argument('--do_attack', type=bool)
+    parser.add_argument('--do_attack', type=str)
     return parser
 
 
@@ -76,7 +76,12 @@ if __name__ == '__main__':
         testers = build_sat_tester(task_cfg)
     for tester in testers:
         tester._pipeline.loop_num = parsed_args.loop_num
-        tester._pipeline.do_attack = parsed_args.do_attack
+        if parsed_args.do_attack == 'true':
+            tester._pipeline.do_attack = True
+        elif parsed_args.do_attack == 'false':
+            tester._pipeline.do_attack = False
+        else:
+            assert False, parsed_args.do_attack
         tester._pipeline.dataset_name = parsed_args.dataset_name
         tester._pipeline.load_attack()
         tester.test()
