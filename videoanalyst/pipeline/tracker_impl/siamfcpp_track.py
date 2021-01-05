@@ -105,11 +105,11 @@ class SiamFCppTracker(PipelineBase):
         self.debug = False
         self.set_model(self._model)
 
-        self.do_attack = False
+        self.do_attack = True
 
         """START：读入扰动"""
         if self.do_attack:
-            self.loop_num = 32768
+            self.loop_num = 16384
             self.uap_root = '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots/train_set=fulldata_FGSM_cls=1_ctr=1_reg=1_l2_z=0.005_l2_x=1e-05_lr_z=0.1_lr_x=0.5'
             patch_x_path = os.path.join(self.uap_root, 'x_{}'.format(self.loop_num))
             uap_z_path = os.path.join(self.uap_root, 'z_{}'.format(self.loop_num))

@@ -103,7 +103,8 @@ def eval_lasot():
 
 
 if __name__ == '__main__':
-    dataset_name = 'LaSOT'  # 'OTB_2015' or 'GOT-10k_Val' or 'LaSOT'
+    dataset_name = 'GOT-10k_Val'  # 'OTB_2015' or 'GOT-10k_Val' or 'LaSOT'
+    loop_num = 16384
     root = '/home/etvuz/projects/adversarial_attack'
     if dataset_name == 'OTB_2015':
         result_root = os.path.join(root, 'video_analyst/logs/GOT-Benchmark/result/otb2015/siamfcpp_googlenet')
@@ -116,7 +117,7 @@ if __name__ == '__main__':
         result_root = os.path.join(
             root,
             'video_analyst/snapshots/train_set=fulldata_FGSM_cls=1_ctr=1_reg=1_l2_z=0.005_l2_x=1e-05_lr_z=0.1_lr_x=0.5/'
-            'result/32768')
+            'result/GOT-10k/{}'.format(loop_num))
         dataset = GOT10k(os.path.join(root, 'video_analyst/datasets/GOT-10k'), subset='val', return_meta=True)
         experimentGOT10k = ExperimentGOT10k(os.path.join(root, 'video_analyst/datasets/GOT-10k'), subset='val')
         FGT_root = os.path.join(root, 'patch_anno', dataset_name)
