@@ -49,82 +49,56 @@ python videoanalyst/pipeline/utils/generate_patch_anno.py
 
 # 测试
 
-## 测试 GOT-10k 数据库
+## 生成 Fake Ground Truth
+
+```bash
+[修改相应路径] python videoanalyst/pipeline/utils/generate_patch_anno.py
+数据位于 /home/etvuz/projects/adversarial_attack/patch_anno/[dataset_name]
+```
+
+## 使得测试代码正确读入 FGT
+
+```bash
+got_benchmark_helper.py/PipelineTracker/track():dataset_name = [dataset_name]
+```
+
+## 设置是否进行攻击
+
+```bash
+siamfcpp_track.py/self.do_attack = ...
+```
+
+## 设置 iteration num
+
+```bash
+siamfcpp_track.py/self.loop_num = ...
+```
+
+## 在配置文件中指定正确的预训练模型
+
+```bash
+/home/etvuz/projects/adversarial_attack/video_analyst/models/siamfcpp/siamfcpp-googlenet-got-md5_e182dc4c3823427022eccf7313d740a7.pkl
+```
+
+## 进入 conda 环境
+
+```bash
+source activate pytorch1.4_python3.7
+cd /home/etvuz/projects/adversarial_attack/video_analyst
+```
+
+## 测试
 
 ```bash
 python main/test.py --config experiments/siamfcpp/train/got10k/siamfcpp_googlenet-trn.yaml
-```
-
-## 测试 OTB 数据库
-
-### 生成 Fake Ground Truth
-
-```bash
-[修改相应路径] python videoanalyst/pipeline/utils/generate_patch_anno.py
-数据位于 /home/etvuz/projects/adversarial_attack/patch_anno/OTB_2015
-```
-
-### 使得测试代码正确读入 FGT
-
-```bash
-got_benchmark_helper.py/PipelineTracker/track():dataset_name = 'OTB_2015'
-```
-
-### 设置是否进行攻击
-
-```bash
-siamfcpp_track.py/self.do_attack=True
-```
-
-### 测试
-
-```bash
-在配置文件中指定正确的预训练模型: /home/etvuz/projects/adversarial_attack/video_analyst/models/siamfcpp/siamfcpp-googlenet-got-md5_e182dc4c3823427022eccf7313d740a7.pkl
-source activate pytorch1.4_python3.7
-cd /home/etvuz/projects/adversarial_attack/video_analyst
 python main/test.py --config experiments/siamfcpp/test/otb/siamfcpp_googlenet-otb.yaml
-```
-
-### 评估
-
-```bash
-[修改 dataset_name] python main/eval.py
-```
-
-## 测试 LaSOT 数据库
-
-### 生成 Fake Ground Truth
-
-```bash
-[修改相应路径] python videoanalyst/pipeline/utils/generate_patch_anno.py
-数据位于 /home/etvuz/projects/adversarial_attack/patch_anno/LaSOT
-```
-
-### 使得测试代码正确读入 FGT
-
-```bash
-got_benchmark_helper.py/PipelineTracker/track():dataset_name = 'LsSOT'
-```
-
-### 设置是否进行攻击
-
-```bash
-siamfcpp_track.py/self.do_attack=True
-```
-
-### 测试
-
-```bash
-在配置文件中指定正确的预训练模型: /home/etvuz/projects/adversarial_attack/video_analyst/models/siamfcpp/siamfcpp-googlenet-got-md5_e182dc4c3823427022eccf7313d740a7.pkl
-source activate pytorch1.4_python3.7
-cd /home/etvuz/projects/adversarial_attack/video_analyst
 python main/test.py --config experiments/siamfcpp/test/lasot/siamfcpp_googlenet-lasot.yaml
 ```
 
-### 评估
+## 评估
 
 ```bash
-[修改 dataset_name] python main/eval.py
+[修改 dataset_name/loop_num] python main/eval.py
 ```
 
 # 实时评估
