@@ -14,6 +14,7 @@ from videoanalyst.utils.visualize_inference import visualize_search_img, visuali
 class PipelineTracker(object):
     def __init__(self,
                  name: str,
+                 backbone_name: str,
                  pipeline: PipelineBase,
                  is_deterministic: bool = True):
         """Helper tracker for comptability with 
@@ -28,6 +29,7 @@ class PipelineTracker(object):
             [description], by default False
         """
         self.name = name
+        self.backbone_name = backbone_name
         self.is_deterministic = is_deterministic
         self.pipeline = pipeline
 

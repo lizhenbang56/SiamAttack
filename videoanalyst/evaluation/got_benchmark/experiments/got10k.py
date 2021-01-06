@@ -91,7 +91,7 @@ class ExperimentGOT10k(object):
                 print(' Repetition: %d' % (r + 1))
 
                 # skip if results exist
-                record_file = os.path.join(self.result_dir, tracker.name,
+                record_file = os.path.join(self.result_dir, tracker.backbone_name, tracker.name,
                                            seq_name,
                                            '%s_%03d.txt' % (seq_name, r + 1))
                 if os.path.exists(record_file) and not overwrite_result:

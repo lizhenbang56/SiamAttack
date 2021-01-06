@@ -14,7 +14,8 @@ from videoanalyst.evaluation.got_benchmark.experiments.lasot import ExperimentLa
 def parse_args():
     parser = argparse.ArgumentParser(description='Eval')
     parser.add_argument('--dataset_name', type=str, default='GOT-10k_Val')
-    parser.add_argument('--loop_num', type=int, default=8192)
+    parser.add_argument('--loop_num', type=int, default=32768)
+    parser.add_argument('--backbone_name', type=str)
     return parser.parse_args()
 
 
@@ -94,9 +95,9 @@ def eval_lasot():
             eval_result['precision_score'],
             eval_result['normalized_precision_score'],
             int(eval_result['speed_fps'])))
-    FGT_paths = sorted(glob.glob('/home/etvuz/projects/adversarial_attack/patch_anno/LaSOT/*.txt'))
+    fgt_paths = sorted(glob.glob('/home/etvuz/projects/adversarial_attack/patch_anno/LaSOT/*.txt'))
     annos = {}
-    for path in FGT_paths:
+    for path in fgt_paths:
         video_name = path.split('/')[-1].split('.')[0]
         annos[video_name] = np.loadtxt(path, delimiter=',')
     for k, v in experiment.dataset.seq_datas.items():
@@ -114,6 +115,7 @@ if __name__ == '__main__':
     args = parse_args()
     dataset_name = args.dataset_name
     loop_num = args.loop_num
+    backbone_name = args.backbone_name
     root = '/home/etvuz/projects/adversarial_attack'
     if dataset_name == 'OTB_2015':
         result_root = os.path.join(root, 'video_analyst/logs/GOT-Benchmark/result/otb2015/siamfcpp_googlenet')
@@ -126,7 +128,7 @@ if __name__ == '__main__':
         result_root = os.path.join(
             root,
             'video_analyst/snapshots/train_set=fulldata_FGSM_cls=1_ctr=1_reg=1_l2_z=0.005_l2_x=1e-05_lr_z=0.1_lr_x=0.5/'
-            'result/GOT-10k/{}'.format(loop_num))
+            'result/GOT-10k/{}/{}'.format(backbone_name, loop_num))
         dataset = GOT10k(os.path.join(root, 'video_analyst/datasets/GOT-10k'), subset='val', return_meta=True)
         experimentGOT10k = ExperimentGOT10k(os.path.join(root, 'video_analyst/datasets/GOT-10k'), subset='val')
         FGT_root = os.path.join(root, 'patch_anno', dataset_name)

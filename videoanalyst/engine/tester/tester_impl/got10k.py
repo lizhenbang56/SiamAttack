@@ -67,7 +67,7 @@ class GOT10kTester(TesterBase):
             if nr_devs == 1:
                 dev = all_devs[0]
                 self._pipeline.set_device(dev)
-                pipeline_tracker = PipelineTracker(tracker_name, self._pipeline)
+                pipeline_tracker = PipelineTracker(tracker_name, self._hyper_params["exp_name"], self._pipeline)
                 experiment.run(pipeline_tracker)
             # multi-worker
             else:
