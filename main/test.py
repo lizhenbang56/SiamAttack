@@ -22,6 +22,15 @@ def make_parser():
     parser.add_argument('--dataset_name', type=str)
     parser.add_argument('--loop_num', type=int)
     parser.add_argument('--do_attack', type=str)
+    parser.add_argument('--trainset', default='fulldata', type=str)
+    parser.add_argument('--optimize_mode', default='FGSM', type=str)
+    parser.add_argument('--cls_weight', type=float)
+    parser.add_argument('--ctr_weight', type=float)
+    parser.add_argument('--reg_weight', type=float)
+    parser.add_argument('--l2_z_weight', default=0.005, type=float)
+    parser.add_argument('--l2_x_weight', default=0.00001, type=float)
+    parser.add_argument('--lr_z', default=0.1, type=float)
+    parser.add_argument('--lr_x', default=0.5, type=float)
     return parser
 
 
@@ -83,5 +92,8 @@ if __name__ == '__main__':
         else:
             assert False, parsed_args.do_attack
         tester._pipeline.dataset_name = parsed_args.dataset_name
+        tester._pipeline.save_name = 'train_set={}_{}_cls={}_ctr={}_reg={}_l2_z={}_l2_x={}_lr_z={}_lr_x={}'.format(
+            parsed_args.trainset, parsed_args.optimize_mode, parsed_args.cls_weight, parsed_args.ctr_weight, parsed_args.reg_weight,
+            parsed_args.l2_z_weight, parsed_args.l2_x_weight, parsed_args.lr_z, parsed_args.lr_x)
         tester._pipeline.load_attack()
         tester.test()

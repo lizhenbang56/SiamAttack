@@ -93,13 +93,12 @@ class RegularTrainer(TrainerBase):
         self.lr_z = 0.1
         self.lr_x = 0.5
         self.optimize_mode = 'FGSM'
-        self.save_name = '{}_cls={}_ctr={}_reg={}_l2_z={}_l2_x={}_lr_z={}_lr_x={}'.format(
-            self.optimize_mode, self.cls_weight, self.ctr_weight, self.reg_weight,
+        self.save_name = 'train_set={}_{}_cls={}_ctr={}_reg={}_l2_z={}_l2_x={}_lr_z={}_lr_x={}'.format(
+            dataset_name, self.optimize_mode, self.cls_weight, self.ctr_weight, self.reg_weight,
             self.l2_z_weight, self.l2_x_weight, self.lr_z, self.lr_x)
         """END：设定参数"""
 
         """START：设置保存路径"""
-        self.save_name = 'train_set={}_'.format(dataset_name) + self.save_name
         print(self.save_name)
         save_dir = os.path.join('/home/etvuz/projects/adversarial_attack/video_analyst/snapshots', self.save_name)
         if signal_img_debug:

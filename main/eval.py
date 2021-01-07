@@ -16,6 +16,15 @@ def parse_args():
     parser.add_argument('--dataset_name', type=str, default='GOT-10k_Val')
     parser.add_argument('--loop_num', type=int, default=32768)
     parser.add_argument('--backbone_name', type=str)
+    parser.add_argument('--trainset', default='fulldata', type=str)
+    parser.add_argument('--optimize_mode', default='FGSM', type=str)
+    parser.add_argument('--cls_weight', type=float)
+    parser.add_argument('--ctr_weight', type=float)
+    parser.add_argument('--reg_weight', type=float)
+    parser.add_argument('--l2_z_weight', default=0.005, type=float)
+    parser.add_argument('--l2_x_weight', default=0.00001, type=float)
+    parser.add_argument('--lr_z', default=0.1, type=float)
+    parser.add_argument('--lr_x', default=0.5, type=float)
     return parser.parse_args()
 
 
@@ -125,10 +134,13 @@ if __name__ == '__main__':
         result_root = os.path.join(root, 'video_analyst/logs/GOT-Benchmark/result_attack/LaSOT/siamfcpp_googlenet')
         eval_lasot()
     elif dataset_name == 'GOT-10k_Val':
+        save_name = 'train_set={}_{}_cls={}_ctr={}_reg={}_l2_z={}_l2_x={}_lr_z={}_lr_x={}'.format(
+            args.trainset, args.optimize_mode, args.cls_weight, args.ctr_weight, args.reg_weight,
+            args.l2_z_weight, args.l2_x_weight, args.lr_z, args.lr_x)
         result_root = os.path.join(
             root,
-            'video_analyst/snapshots/train_set=fulldata_FGSM_cls=1_ctr=1_reg=1_l2_z=0.005_l2_x=1e-05_lr_z=0.1_lr_x=0.5/'
-            'result/GOT-10k/{}/{}'.format(backbone_name, loop_num))
+            'video_analyst/snapshots/{}/'
+            'result/GOT-10k/{}/{}'.format(save_name, backbone_name, loop_num))
         dataset = GOT10k(os.path.join(root, 'video_analyst/datasets/GOT-10k'), subset='val', return_meta=True)
         experimentGOT10k = ExperimentGOT10k(os.path.join(root, 'video_analyst/datasets/GOT-10k'), subset='val')
         FGT_root = os.path.join(root, 'patch_anno', dataset_name)

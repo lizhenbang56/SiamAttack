@@ -105,8 +105,6 @@ class SiamFCppTracker(PipelineBase):
         self.debug = False
         self.set_model(self._model)
 
-        self.uap_root = '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots/train_set=fulldata_FGSM_cls=1_ctr=1_reg=1_l2_z=0.005_l2_x=1e-05_lr_z=0.1_lr_x=0.5'
-
     def set_model(self, model):
         """model to be set to pipeline. change device & turn it into eval mode
         
@@ -186,6 +184,7 @@ class SiamFCppTracker(PipelineBase):
     def load_attack(self):
         if self.do_attack:
             """START：读入扰动"""
+            self.uap_root = '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots/{}'.format(self.save_name)
             patch_x_path = os.path.join(self.uap_root, 'x_{}'.format(self.loop_num))
             uap_z_path = os.path.join(self.uap_root, 'z_{}'.format(self.loop_num))
             self.patch_x = torch.load(patch_x_path, map_location='cpu')

@@ -1,6 +1,6 @@
 cls_weight=0
-ctr_weight=0
-reg_weight=1
+ctr_weight=1
+reg_weight=0
 
 source activate pytorch1.4_python3.7
 export CUDA_VISIBLE_DEVICES=1,2,3
