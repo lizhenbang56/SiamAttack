@@ -64,20 +64,6 @@ class RegularTrainer(TrainerBase):
         self._state["initialized"] = False
         self._state["devices"] = torch.device("cuda:0")
 
-        """START：设定参数"""
-        self.cls_weight = 1
-        self.ctr_weight = 1
-        self.reg_weight = 1
-        self.l2_z_weight = 0.005  # 希望模板图像 z 的扰动小，因此权重应该大。
-        self.l2_x_weight = 0.00001
-        self.lr_z = 0.1
-        self.lr_x = 0.5
-        self.optimize_mode = 'FGSM'
-        self.save_name = '{}_cls={}_ctr={}_reg={}_l2_z={}_l2_x={}_lr_z={}_lr_x={}'.format(
-            self.optimize_mode, self.cls_weight, self.ctr_weight, self.reg_weight,
-            self.l2_z_weight, self.l2_x_weight, self.lr_z, self.lr_x)
-        """END：设定参数"""
-
     def init_train(self, ):
         torch.cuda.empty_cache()
         # move model & loss to target devices
@@ -92,11 +78,25 @@ class RegularTrainer(TrainerBase):
         super(RegularTrainer, self).init_train()
         logger.info("{} initialized".format(type(self).__name__))
 
-    def train(self, patch_x, uap_z, real_iter_num, signal_img_debug, visualize, optimizer, dataset_name):
+    def train(self, patch_x, uap_z, real_iter_num, signal_img_debug, visualize, optimizer, dataset_name, params):
         """"""
         if not self._state["initialized"]:
             self.init_train()
         self._state["initialized"] = True
+
+        """START：设定参数"""
+        self.cls_weight = params['cls_weight']
+        self.ctr_weight = params['ctr_weight']
+        self.reg_weight = params['reg_weight']
+        self.l2_z_weight = 0.005  # 希望模板图像 z 的扰动小，因此权重应该大。
+        self.l2_x_weight = 0.00001
+        self.lr_z = 0.1
+        self.lr_x = 0.5
+        self.optimize_mode = 'FGSM'
+        self.save_name = '{}_cls={}_ctr={}_reg={}_l2_z={}_l2_x={}_lr_z={}_lr_x={}'.format(
+            self.optimize_mode, self.cls_weight, self.ctr_weight, self.reg_weight,
+            self.l2_z_weight, self.l2_x_weight, self.lr_z, self.lr_x)
+        """END：设定参数"""
 
         """START：设置保存路径"""
         self.save_name = 'train_set={}_'.format(dataset_name) + self.save_name

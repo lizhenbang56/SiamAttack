@@ -42,6 +42,9 @@ def make_parser():
         help=r"completed epoch's number, latest or one model path")
     parser.add_argument('--signal_img_debug', default=False, type=bool)
     parser.add_argument('--uap_resume', default=False, type=bool)
+    parser.add_argument('--cls_weight', default=False, type=float)
+    parser.add_argument('--ctr_weight', default=False, type=float)
+    parser.add_argument('--reg_weight', default=False, type=float)
 
     return parser
 
@@ -126,7 +129,10 @@ if __name__ == '__main__':
     logger.info("Start training")
     while not trainer.is_completed():
         patch_x, uap_z, real_iter_num = trainer.train(patch_x, uap_z, real_iter_num, parsed_args.signal_img_debug,
-                                                      visualize=parsed_args.uap_resume, optimizer=optimizer, dataset_name=dataset_name)
+                                                      visualize=parsed_args.uap_resume, optimizer=optimizer, dataset_name=dataset_name,
+                                                      params={'cls_weight': parsed_args.cls_weight,
+                                                              'ctr_weight': parsed_args.ctr_weight,
+                                                              'reg_weight': parsed_args.reg_weight})
         trainer.save_snapshot()
     # export final model
     trainer.save_snapshot(model_param_only=True)
