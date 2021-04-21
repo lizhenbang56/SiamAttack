@@ -14,23 +14,23 @@ def to_2d_map(tensor):
     return heatmap
 
 
-def visualize_search_img(adv_search_img, best_box_xyxy_in_search_img, save_root, idx):
+def visualize_search_img(adv_search_img, best_box_xyxy_in_search_img, save_root, idx, name):
     """
     adv_search_img: 未转为 unit8, ndarray, [h,w,3]
     """
     adv_search_img = np.clip(adv_search_img, 0, 255).astype(np.uint8)
     x1, y1, x2, y2 = [int(var) for var in best_box_xyxy_in_search_img]
     assert adv_search_img.flags['C_CONTIGUOUS']
-    adv_search_img = cv2.rectangle(adv_search_img, (x1, y1), (x2, y2), (0, 255, 0), thickness=2)
-    save_path = os.path.join(save_root, '{}_adv_search_img.jpg'.format(idx))
+    # adv_search_img = cv2.rectangle(adv_search_img, (x1, y1), (x2, y2), (0, 255, 0), thickness=2)
+    save_path = os.path.join(save_root, '{}_{}.jpg'.format(idx, name))
     print(save_path)
     assert cv2.imwrite(save_path, adv_search_img)
     return
 
 
-def visualize_template_img(adv_template_img, save_root, idx):
+def visualize_template_img(adv_template_img, save_root, idx, name):
     adv_template_img = np.clip(adv_template_img, 0, 255).astype(np.uint8)
-    save_path = os.path.join(save_root, '{}_adv_template_img.jpg'.format(idx))
+    save_path = os.path.join(save_root, '{}_{}.jpg'.format(idx, name))
     assert cv2.imwrite(save_path, adv_template_img)
     return
 

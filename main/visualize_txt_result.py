@@ -18,16 +18,17 @@ def print_class():
             print(content, file_path)
 
 
-def draw_history_trajectory(img, gt_cxy_hist, fgt_cxy_hist):
+def draw_history_trajectory(img, gt_cxy_hist, fgt_cxy_hist, pred_cxy_hist):
     """"""
     """START：声明透明轨迹图像"""
     trajectory = Image.new('RGBA', (target_w, target_h))
     draw_trajectory = ImageDraw.Draw(trajectory)
     """END：声明透明轨迹图像"""
 
-    for gt_cxy, fgt_cxy in zip(gt_cxy_hist, fgt_cxy_hist):
+    for gt_cxy, fgt_cxy, pred_cxy in zip(gt_cxy_hist, fgt_cxy_hist, pred_cxy_hist):
         draw_trajectory.ellipse([tuple(gt_cxy - wp), tuple(gt_cxy + wp)], fill='red')
-        draw_trajectory.ellipse([tuple(fgt_cxy - wp), tuple(fgt_cxy + wp)], fill='yellow')
+        # draw_trajectory.ellipse([tuple(fgt_cxy - wp), tuple(fgt_cxy + wp)], fill='yellow')
+        draw_trajectory.ellipse([tuple(pred_cxy - wp), tuple(pred_cxy + wp)], fill='green')
 
     """START：原始图像与轨迹图像融合"""
     if img.size != trajectory.size:
@@ -59,13 +60,16 @@ def visualize(pred, gt, fgt, video_name, dataset_dir, overwrite):
     """START：绘制 GT/FGT 完整轨迹"""
     gt_cxy_list = []  # 0 代表初始帧
     fgt_cxy_list = []
-    for gt_, fgt_ in zip(gt, fgt):
+    pred_cxy_list = []
+    for gt_, fgt_, pred_ in zip(gt, fgt, pred):
         gt_cxy = xywh2cxywh(gt_)[:2] * (scale_w, scale_h)
         fgt_cxy = xywh2cxywh(fgt_)[:2] * (scale_w, scale_h)
+        pred_cxy = xywh2cxywh(pred_)[:2] * (scale_w, scale_h)
         draw_trajectory.ellipse([tuple(gt_cxy - wp), tuple(gt_cxy + wp)], fill='red')
         draw_trajectory.ellipse([tuple(fgt_cxy - wp), tuple(fgt_cxy + wp)], fill='yellow')
         gt_cxy_list.append(gt_cxy)
         fgt_cxy_list.append(fgt_cxy)
+        pred_cxy_list.append(pred_cxy)
     """END：绘制 GT/FGT 完整轨迹"""
 
     """START：主体绘制循环"""
@@ -125,10 +129,12 @@ def visualize(pred, gt, fgt, video_name, dataset_dir, overwrite):
     mid_frame_name = 50  # 从1开始
     frame_mid = draw_history_trajectory(img_list[mid_frame_name-1],
                                         gt_cxy_list[mid_frame_name-30:mid_frame_name+1],
-                                        fgt_cxy_list[mid_frame_name-30:mid_frame_name+1])
+                                        fgt_cxy_list[mid_frame_name-30:mid_frame_name+1],
+                                        pred_cxy_list[mid_frame_name-30:mid_frame_name+1])
     frame_end = draw_history_trajectory(img_list[-1],
                                         gt_cxy_list[-30:-1],
-                                        fgt_cxy_list[-30:-1])
+                                        fgt_cxy_list[-30:-1],
+                                        pred_cxy_list[-30:-1])
     end_frame_name = len(img_list)
     only_save_special_frames = True
     """START：特定帧融合倒数30帧轨迹"""
@@ -192,7 +198,7 @@ def run_per_video(video_name, gt, overwrite):
 def visualize_txt_result(overwrite):
     video_names = sorted(os.listdir(pred_dir))
     for video_name, gt in zip(video_names, dataset_tool.dataset):
-        if video_name != 'GOT-10k_Val_000174':
+        if video_name != 'GOT-10k_Val_000006':
             continue
         run_per_video(video_name, gt[1], overwrite)
 

@@ -1,10 +1,10 @@
 do_attack=true
 dataset_name="GOT-10k_Val"
 backbone_name="googlenet"  # "shufflenetv2x1_0"  #"alexnet"
-loop_num=2048
-cls_weight=0
+loop_num=32768
+cls_weight=1
 ctr_weight=1
-reg_weight=0
+reg_weight=1
 
 if [ "$dataset_name" = GOT-10k_Val ];then
   cfg=experiments/siamfcpp/test/got10k/siamfcpp_$backbone_name-got.yaml
