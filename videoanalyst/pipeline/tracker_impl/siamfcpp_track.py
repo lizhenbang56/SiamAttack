@@ -184,13 +184,12 @@ class SiamFCppTracker(PipelineBase):
     def load_attack(self):
         if self.do_attack:
             """START：读入扰动"""
-            self.uap_root = '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots/{}'.format(self.save_name)
+            self.uap_root = '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_small_patch/{}'.format(self.save_name)
             patch_x_path = os.path.join(self.uap_root, 'x_{}'.format(self.loop_num))
             uap_z_path = os.path.join(self.uap_root, 'z_{}'.format(self.loop_num))
             self.patch_x = torch.load(patch_x_path, map_location='cpu')
             self.uap_z = torch.load(uap_z_path, map_location='cpu')
             print('loading: ', patch_x_path, uap_z_path)
-            assert self.patch_x.shape[-1] == 128
             """END：读入扰动"""
         else:
             print('NO ATTACK')
@@ -272,19 +271,32 @@ class SiamFCppTracker(PipelineBase):
             patch_gt_y2_ori = patch_gt_y1_ori + patch_gt_h_ori
             # 将补丁在原图上的位置转换为在搜索图像上的位置
             x1, y1 = _point_from_original_img_to_search_img([patch_gt_x1_ori, patch_gt_y1_ori], target_pos, scale_x, x_size)
-            x2, y2 = _point_from_original_img_to_search_img([patch_gt_x2_ori, patch_gt_y2_ori], target_pos, scale_x, x_size)
-            w = x2 - x1
-            h = y2 - y1
+            x1 = max(x1, 0)
+            y1 = max(y1, 0)
+            w = self.patch_x.shape[2]
+            h = self.patch_x.shape[3]
+            # 控制出界（宽）
+            search_img_w = im_x_crop.shape[1]  # np, [hw3]
+            x2 = x1 + w
+            if x2 >= search_img_w:
+                x2 = search_img_w - 1
+                x1 = x2 - w
+            # 控制出界（高）
+            search_img_h = im_x_crop.shape[0]  # np, [hw3]
+            y2 = y1 + h
+            if y2 >= search_img_h:
+                y2 = search_img_h - 1
+                y1 = y2 - h
             """START：得到补丁相对于搜索图像的位置"""
 
-        """START：在搜索图像添加对抗补丁"""
+        """START：在搜索图像添加对抗补丁（不进行缩放）"""
         data = imarray_to_tensor(im_x_crop).to(self.device)  # [1,3,h,w]
         if self.do_attack:
             try:
-                data[0, :, y1:y2, x1:x2] = torch.nn.functional.interpolate(self.patch_x, (h, w)).to(self.device)
+                data[0, :, y1:y1+h, x1:x1+w] = self.patch_x.to(self.device)
             except Exception:
                 print('bad prediction')
-        """END：在搜索图像添加对抗补丁"""
+        """END：在搜索图像添加对抗补丁（不进行缩放）"""
 
         with torch.no_grad():
             score, box, cls, ctr, extra = self._model(

@@ -44,8 +44,8 @@ class ExperimentGOT10k(object):
         self.subset = subset
         if use_dataset:
             self.dataset = GOT10k(root_dir, subset=subset, list_file=list_file)
-        self.result_dir = os.path.join(result_dir, 'GOT-10k')
-        self.report_dir = os.path.join(report_dir, 'GOT-10k')
+        self.result_dir = result_dir
+        self.report_dir = report_dir
         self.nbins_iou = 101
         self.repetitions = 3
 
@@ -167,7 +167,7 @@ class ExperimentGOT10k(object):
             self.dataset.return_meta = True
 
             # assume tracker_names[0] is your tracker
-            report_dir = os.path.join(self.report_dir, tracker_names[0])
+            report_dir = self.report_dir
             if not os.path.exists(report_dir):
                 os.makedirs(report_dir)
             report_file = os.path.join(report_dir, 'performance.json')
@@ -186,7 +186,7 @@ class ExperimentGOT10k(object):
                 for s, (_, anno, meta) in enumerate(self.dataset):
                     seq_name = self.dataset.seq_names[s]
                     record_files = glob.glob(
-                        os.path.join(self.result_dir, name, seq_name,
+                        os.path.join(self.result_dir, seq_name,
                                      '%s_[0-9]*.txt' % seq_name))
                     if len(record_files) == 0:
                         raise Exception('Results for sequence %s not found.' %
@@ -208,7 +208,7 @@ class ExperimentGOT10k(object):
 
                     # stack all tracking times
                     times[seq_name] = []
-                    time_file = os.path.join(self.result_dir, name, seq_name,
+                    time_file = os.path.join(self.result_dir, seq_name,
                                              '%s_time.txt' % seq_name)
                     if os.path.exists(time_file):
                         seq_times = np.loadtxt(time_file, delimiter=',')
@@ -349,7 +349,7 @@ class ExperimentGOT10k(object):
             'but got %s instead' % type(report_files)
 
         # assume tracker_names[0] is your tracker
-        report_dir = os.path.join(self.report_dir, tracker_names[0])
+        report_dir = self.report_dir
         if not os.path.exists(report_dir):
             os.makedirs(report_dir)
 

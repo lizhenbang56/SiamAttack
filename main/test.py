@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from paths import ROOT_PATH  # isort:skip
-
+import os
 import argparse
 import os.path as osp
 
@@ -18,19 +18,21 @@ from videoanalyst.utils import complete_path_wt_root_in_cfg
 
 def make_parser():
     parser = argparse.ArgumentParser(description='Test')
-    parser.add_argument('-cfg', '--config', default='', type=str, help='experiment configuration')
-    parser.add_argument('--dataset_name', type=str)
-    parser.add_argument('--loop_num', type=int)
-    parser.add_argument('--do_attack', type=str)
+    parser.add_argument('-cfg', '--config', default='experiments/siamfcpp/test/got10k/siamfcpp_googlenet-got.yaml', type=str, help='experiment configuration')
+    parser.add_argument('--dataset_name', type=str, default='GOT-10k_Val')
+    parser.add_argument('--loop_num', type=int, default=2048)
+    parser.add_argument('--do_attack', type=str, default='true')
     parser.add_argument('--trainset', default='fulldata', type=str)
     parser.add_argument('--optimize_mode', default='FGSM', type=str)
-    parser.add_argument('--cls_weight', type=float)
-    parser.add_argument('--ctr_weight', type=float)
-    parser.add_argument('--reg_weight', type=float)
+    parser.add_argument('--cls_weight', type=float, default=1.0)
+    parser.add_argument('--ctr_weight', type=float, default=1.0)
+    parser.add_argument('--reg_weight', type=float, default=1.0)
     parser.add_argument('--l2_z_weight', default=0.005, type=float)
     parser.add_argument('--l2_x_weight', default=0.00001, type=float)
     parser.add_argument('--lr_z', default=0.1, type=float)
     parser.add_argument('--lr_x', default=0.5, type=float)
+    parser.add_argument('--gpu_id', default='2', type=str)
+    parser.add_argument('--patch_size', type=int, default=32)
     return parser
 
 
@@ -66,6 +68,10 @@ if __name__ == '__main__':
     parser = make_parser()
     parsed_args = parser.parse_args()
 
+    """设置GPU"""
+    os.environ['CUDA_VISIBLE_DEVICES'] = parsed_args.gpu_id
+    """设置GPU"""
+
     # experiment config
     exp_cfg_path = osp.realpath(parsed_args.config)
     root_cfg.merge_from_file(exp_cfg_path)
@@ -92,8 +98,6 @@ if __name__ == '__main__':
         else:
             assert False, parsed_args.do_attack
         tester._pipeline.dataset_name = parsed_args.dataset_name
-        tester._pipeline.save_name = 'train_set={}_{}_cls={}_ctr={}_reg={}_l2_z={}_l2_x={}_lr_z={}_lr_x={}'.format(
-            parsed_args.trainset, parsed_args.optimize_mode, parsed_args.cls_weight, parsed_args.ctr_weight, parsed_args.reg_weight,
-            parsed_args.l2_z_weight, parsed_args.l2_x_weight, parsed_args.lr_z, parsed_args.lr_x)
+        tester._pipeline.save_name = str(parsed_args.patch_size)
         tester._pipeline.load_attack()
         tester.test()

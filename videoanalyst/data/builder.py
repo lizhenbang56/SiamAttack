@@ -17,7 +17,7 @@ from .target import builder as target_builder
 from .transformer import builder as transformer_builder
 
 
-def build(task: str, cfg: CfgNode, seed: int = 0) -> DataLoader:
+def build(task: str, cfg: CfgNode, seed: int = 0, patch_size=0) -> DataLoader:
     r"""
     Arguments
     ---------
@@ -38,6 +38,7 @@ def build(task: str, cfg: CfgNode, seed: int = 0) -> DataLoader:
             num_epochs=cfg.num_epochs,
             nr_image_per_epoch=cfg.nr_image_per_epoch,
             seed=seed,
+            patch_size=patch_size
         )
         logger.info("Read dummy training sample")
         dummy_sample = dummy_py_dataset[0]  # read dummy sample
@@ -51,7 +52,8 @@ def build(task: str, cfg: CfgNode, seed: int = 0) -> DataLoader:
         py_dataset = AdaptorDataset(task,
                                     cfg,
                                     num_epochs=cfg.num_epochs,
-                                    nr_image_per_epoch=cfg.nr_image_per_epoch)
+                                    nr_image_per_epoch=cfg.nr_image_per_epoch,
+                                    patch_size=patch_size)
         # use DistributedSampler in case of DDP
         if world_size > 1:
             py_sampler = DistributedSampler(py_dataset)

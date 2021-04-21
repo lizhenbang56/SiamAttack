@@ -93,14 +93,12 @@ class RegularTrainer(TrainerBase):
         self.lr_z = 0.1
         self.lr_x = 0.5
         self.optimize_mode = 'FGSM'
-        self.save_name = 'train_set={}_{}_cls={}_ctr={}_reg={}_l2_z={}_l2_x={}_lr_z={}_lr_x={}'.format(
-            dataset_name, self.optimize_mode, self.cls_weight, self.ctr_weight, self.reg_weight,
-            self.l2_z_weight, self.l2_x_weight, self.lr_z, self.lr_x)
+        self.save_name = str(params['patch_size'])
         """END：设定参数"""
 
         """START：设置保存路径"""
         print(self.save_name)
-        save_dir = os.path.join('/home/etvuz/projects/adversarial_attack/video_analyst/snapshots', self.save_name)
+        save_dir = os.path.join('/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_small_patch', self.save_name)
         if signal_img_debug:
             save_dir = '/tmp/uap_debug'
         self.writer = SummaryWriter(save_dir)
@@ -167,10 +165,8 @@ class RegularTrainer(TrainerBase):
                 """START：在搜索图像添加补丁"""
                 for idx, xyxy in enumerate(training_data['bbox_x']):
                     x1, y1, x2, y2 = [int(var) for var in xyxy]  # 补丁在搜索图像上的位置
-                    w = x2 - x1
-                    h = y2 - y1
                     try:
-                        training_data['im_x'][idx, :, y1:y2, x1:x2] = torch.nn.functional.interpolate(patch_x, (h, w))
+                        training_data['im_x'][idx, :, y1:y2+1, x1:x2+1] = patch_x  # 不缩放补丁
                     except:
                         print("Error paste patch")
                         continue

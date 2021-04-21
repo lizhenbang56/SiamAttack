@@ -25,8 +25,9 @@ class DenseboxTarget(TargetBase):
         num_conv3x3=3,
     )
 
-    def __init__(self) -> None:
+    def __init__(self, patch_size=0) -> None:
         super().__init__()
+        self.patch_size = patch_size
 
     def update_params(self):
         hps = self._hyper_params
@@ -41,11 +42,10 @@ class DenseboxTarget(TargetBase):
 
     def generate_fake_gt_xyxy_in_search_img(self):
         """"""
-        """START：随机宽度/高度"""
-        # 希望宽高以 64 为中心，分布区间为 32~128。这个宽度范围应该能够保证 label 都能有意义。
-        fake_gt_w = 64 * math.pow(2, random.uniform(-1, 1))
-        fake_gt_h = 64 * math.pow(2, random.uniform(-1, 1))
-        """END：随机宽度/高度"""
+        """END：设定小补丁尺寸"""
+        fake_gt_w = self.patch_size
+        fake_gt_h = self.patch_size
+        """END：设定小补丁尺寸"""
 
         """START：随机补丁的位置"""
         # 希望补丁的中心点以搜索图像中心点为中心，均匀偏移±64像素。

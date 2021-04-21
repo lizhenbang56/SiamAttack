@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from paths import ROOT_PATH  # isort:skip
-
+import os
 import argparse
 import os.path as osp
 import sys
@@ -32,19 +32,21 @@ def make_parser():
     parser = argparse.ArgumentParser(description='Test')
     parser.add_argument('-cfg',
                         '--config',
-                        default='',
+                        default='experiments/siamfcpp/train/fulldata/siamfcpp_googlenet-trn-fulldata.yaml',
                         type=str,
                         help='path to experiment configuration')
     parser.add_argument(
         '-r',
         '--resume',
-        default="",
+        default="/home/etvuz/projects/adversarial_attack/video_analyst/models/siamfcpp/siamfcpp-googlenet-got-md5_e182dc4c3823427022eccf7313d740a7.pkl",
         help=r"completed epoch's number, latest or one model path")
     parser.add_argument('--signal_img_debug', default=False, type=bool)
     parser.add_argument('--uap_resume', default=False, type=bool)
-    parser.add_argument('--cls_weight', default=False, type=float)
-    parser.add_argument('--ctr_weight', default=False, type=float)
-    parser.add_argument('--reg_weight', default=False, type=float)
+    parser.add_argument('--cls_weight', default=1.0, type=float)
+    parser.add_argument('--ctr_weight', default=1.0, type=float)
+    parser.add_argument('--reg_weight', default=1.0, type=float)
+    parser.add_argument('--patch_size', type=int, default=32)
+    parser.add_argument('--gpu_id', type=str, default='2')
 
     return parser
 
@@ -53,6 +55,11 @@ if __name__ == '__main__':
     # parsing
     parser = make_parser()
     parsed_args = parser.parse_args()
+
+    """指定GPU"""
+    # os.environ['CUDA_VISIBLE_DEVICES'] = parsed_args.gpu_id
+    """指定GPU"""
+
     # experiment config
     exp_cfg_path = osp.realpath(parsed_args.config)
     root_cfg.merge_from_file(exp_cfg_path)
@@ -99,7 +106,7 @@ if __name__ == '__main__':
     model.set_device(devs[0])
     # load data
     with Timer(name="Dataloader building", verbose=True):
-        dataloader = dataloader_builder.build(task, task_cfg.data)
+        dataloader = dataloader_builder.build(task, task_cfg.data, patch_size=parsed_args.patch_size)
     # build optimizer
     optimizer = optim_builder.build(task, task_cfg.optim, model)
     # build trainer
@@ -111,7 +118,7 @@ if __name__ == '__main__':
 
     """START：声明通用扰动"""
     if not parsed_args.uap_resume:
-        patch_x = torch.normal(mean=(128.0 * torch.ones(1, 3, 128, 128)))
+        patch_x = torch.normal(mean=(128.0 * torch.ones(1, 3, parsed_args.patch_size, parsed_args.patch_size)))
         uap_z = torch.zeros((1, 3, 127, 127))
         optimizer = torch.optim.AdamW([patch_x, uap_z], lr=0.1, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.0,
                                       amsgrad=False)
@@ -132,7 +139,8 @@ if __name__ == '__main__':
                                                       visualize=parsed_args.uap_resume, optimizer=optimizer, dataset_name=dataset_name,
                                                       params={'cls_weight': parsed_args.cls_weight,
                                                               'ctr_weight': parsed_args.ctr_weight,
-                                                              'reg_weight': parsed_args.reg_weight})
+                                                              'reg_weight': parsed_args.reg_weight,
+                                                              'patch_size': parsed_args.patch_size})
         trainer.save_snapshot()
     # export final model
     trainer.save_snapshot(model_param_only=True)
