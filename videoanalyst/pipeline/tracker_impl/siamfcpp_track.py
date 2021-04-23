@@ -184,7 +184,7 @@ class SiamFCppTracker(PipelineBase):
     def load_attack(self):
         if self.do_attack:
             """START：读入扰动"""
-            self.uap_root = '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_small_patch/{}'.format(self.save_name)
+            self.uap_root = '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_imperceptible_patch/{}'.format(self.save_name)
             patch_x_path = os.path.join(self.uap_root, 'x_{}'.format(self.loop_num))
             uap_z_path = os.path.join(self.uap_root, 'z_{}'.format(self.loop_num))
             self.patch_x = torch.load(patch_x_path, map_location='cpu')
@@ -293,7 +293,7 @@ class SiamFCppTracker(PipelineBase):
         data = imarray_to_tensor(im_x_crop).to(self.device)  # [1,3,h,w]
         if self.do_attack:
             try:
-                data[0, :, y1:y1+h, x1:x1+w] = self.patch_x.to(self.device)
+                data[0, :, y1:y1+h, x1:x1+w] += self.patch_x.to(self.device)[0]  # 添加而不是粘贴
             except Exception:
                 print('bad prediction')
         """END：在搜索图像添加对抗补丁（不进行缩放）"""

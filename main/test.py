@@ -32,7 +32,7 @@ def make_parser():
     parser.add_argument('--lr_z', default=0.1, type=float)
     parser.add_argument('--lr_x', default=0.5, type=float)
     parser.add_argument('--gpu_id', default='2', type=str)
-    parser.add_argument('--patch_size', type=int, default=32)
+    parser.add_argument('--patch_size', type=int, default=64)
     return parser
 
 

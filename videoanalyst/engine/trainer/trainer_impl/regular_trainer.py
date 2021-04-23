@@ -89,16 +89,16 @@ class RegularTrainer(TrainerBase):
         self.ctr_weight = params['ctr_weight']
         self.reg_weight = params['reg_weight']
         self.l2_z_weight = 0.005  # 希望模板图像 z 的扰动小，因此权重应该大。
-        self.l2_x_weight = 0.00001
+        self.l2_x_weight = 0.005  # 搜索图像的l2权重同样要大。因为希望x扰动小。
         self.lr_z = 0.1
-        self.lr_x = 0.5
+        self.lr_x = 0.1  # 修改成和z一样
         self.optimize_mode = 'FGSM'
         self.save_name = str(params['patch_size'])
         """END：设定参数"""
 
         """START：设置保存路径"""
         print(self.save_name)
-        save_dir = os.path.join('/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_small_patch', self.save_name)
+        save_dir = os.path.join('/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_imperceptible_patch', self.save_name)
         if signal_img_debug:
             save_dir = '/tmp/uap_debug'
         self.writer = SummaryWriter(save_dir)
@@ -166,9 +166,9 @@ class RegularTrainer(TrainerBase):
                 for idx, xyxy in enumerate(training_data['bbox_x']):
                     x1, y1, x2, y2 = [int(var) for var in xyxy]  # 补丁在搜索图像上的位置
                     try:
-                        training_data['im_x'][idx, :, y1:y2+1, x1:x2+1] = patch_x  # 不缩放补丁
-                    except:
-                        print("Error paste patch")
+                        training_data['im_x'][idx, :, y1:y2+1, x1:x2+1] += patch_x[0]  # 不缩放补丁，相加操作，希望不可感知
+                    except Exception as e:
+                        print("Error paste patch", str(e))
                         continue
                 if visualize:
                     visualize_patched_img(training_data['im_x'], name='patched_train_search')

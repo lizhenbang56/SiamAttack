@@ -45,7 +45,7 @@ def make_parser():
     parser.add_argument('--cls_weight', default=1.0, type=float)
     parser.add_argument('--ctr_weight', default=1.0, type=float)
     parser.add_argument('--reg_weight', default=1.0, type=float)
-    parser.add_argument('--patch_size', type=int, default=32)
+    parser.add_argument('--patch_size', type=int, default=64)
     parser.add_argument('--gpu_id', type=str, default='2')
 
     return parser
@@ -118,7 +118,7 @@ if __name__ == '__main__':
 
     """START：声明通用扰动"""
     if not parsed_args.uap_resume:
-        patch_x = torch.normal(mean=(128.0 * torch.ones(1, 3, parsed_args.patch_size, parsed_args.patch_size)))
+        patch_x = torch.zeros(1, 3, parsed_args.patch_size, parsed_args.patch_size)  # 因为是相加，所以初始化为0
         uap_z = torch.zeros((1, 3, 127, 127))
         optimizer = torch.optim.AdamW([patch_x, uap_z], lr=0.1, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.0,
                                       amsgrad=False)

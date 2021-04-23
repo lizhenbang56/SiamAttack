@@ -17,6 +17,7 @@ def main():
 if __name__ == '__main__':
     subset='val'
     network = 'siamfcpp_googlenet'
-    result_dir='/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_small_patch/32/result/GOT-10k/siamfcpp_googlenet/2048'
-    report_dir='/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_small_patch/32/report/GOT-10k/2048'
+    iter_num = 4096
+    result_dir= '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_imperceptible_patch/64/result/siamfcpp_googlenet/{}'.format(iter_num)
+    report_dir='/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_imperceptible_patch/64/report/siamfcpp_googlenet/{}'.format(iter_num)
     main()

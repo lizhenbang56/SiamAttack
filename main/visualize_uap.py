@@ -10,12 +10,7 @@ def visualize_uap(patch, name):
     patch: [batch, 3, 303, 303], torch.tensor
     """
     img = np.ascontiguousarray(patch[0].data.cpu().numpy().transpose(1, 2, 0))
-    if name == 'x':
-        base_img = np.ones_like(img)
-    elif name == 'z':
-        base_img = 127.0 * np.ones_like(img)
-    else:
-        assert False, name
+    base_img = 127.0 * np.ones_like(img)
     img = np.clip(img + base_img, 0, 255).astype(np.uint8)
 
     """START：计算 mse"""
@@ -33,6 +28,7 @@ def visualize_uap(patch, name):
     if not os.path.exists(save_root):
         os.makedirs(save_root)
     save_path = os.path.join(save_root, '{}.jpg'.format(name))
+    print(save_path)
     assert cv2.imwrite(save_path, img)
     """END：保存可视化结果"""
 
@@ -56,6 +52,7 @@ def main():
 
 
 if __name__ == '__main__':
-    root = '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots/train_set=fulldata_FGSM_cls=1_ctr=1_reg=1_l2_z=0.005_l2_x=1e-05_lr_z=0.1_lr_x=0.5'
-    num = 32768
+    os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+    root = '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_imperceptible_patch/64'
+    num = 2048
     main()

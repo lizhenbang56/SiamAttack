@@ -1,7 +1,7 @@
 cls_weight=1.0
 ctr_weight=1.0
 reg_weight=1.0
-patch_size=32
+patch_size=64
 
 source activate pytorch1.4_python3.7
 export CUDA_VISIBLE_DEVICES=0,1,3

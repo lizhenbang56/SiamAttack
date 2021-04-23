@@ -1,9 +1,11 @@
+import sys
 import os
 import copy
 import glob
 import numpy as np
 from PIL import Image, ImageDraw
 
+sys.path.append('/home/etvuz/projects/adversarial_attack/video_analyst')
 from videoanalyst.pipeline.utils import xywh2xyxy, xywh2cxywh
 from videoanalyst.evaluation.got_benchmark.utils.metrics import rect_iou
 from videoanalyst.evaluation.got_benchmark.experiments.got10k import ExperimentGOT10k
@@ -18,16 +20,15 @@ def print_class():
             print(content, file_path)
 
 
-def draw_history_trajectory(img, gt_cxy_hist, fgt_cxy_hist, pred_cxy_hist):
+def draw_history_trajectory(img, gt_cxy_hist, pred_cxy_hist):
     """"""
     """START：声明透明轨迹图像"""
     trajectory = Image.new('RGBA', (target_w, target_h))
     draw_trajectory = ImageDraw.Draw(trajectory)
     """END：声明透明轨迹图像"""
 
-    for gt_cxy, fgt_cxy, pred_cxy in zip(gt_cxy_hist, fgt_cxy_hist, pred_cxy_hist):
+    for gt_cxy, pred_cxy in zip(gt_cxy_hist, pred_cxy_hist):
         draw_trajectory.ellipse([tuple(gt_cxy - wp), tuple(gt_cxy + wp)], fill='red')
-        # draw_trajectory.ellipse([tuple(fgt_cxy - wp), tuple(fgt_cxy + wp)], fill='yellow')
         draw_trajectory.ellipse([tuple(pred_cxy - wp), tuple(pred_cxy + wp)], fill='green')
 
     """START：原始图像与轨迹图像融合"""
@@ -40,7 +41,7 @@ def draw_history_trajectory(img, gt_cxy_hist, fgt_cxy_hist, pred_cxy_hist):
     return img
 
 
-def visualize(pred, gt, fgt, video_name, dataset_dir, overwrite):
+def visualize(pred, gt, video_name, dataset_dir, overwrite):
     img_list = []
     img_gt_list = []
     img_fgt_list = []
@@ -57,31 +58,25 @@ def visualize(pred, gt, fgt, video_name, dataset_dir, overwrite):
     draw_trajectory = ImageDraw.Draw(trajectory)
     """END：声明透明轨迹图像"""
 
-    """START：绘制 GT/FGT 完整轨迹"""
+    """START：绘制 GT 完整轨迹"""
     gt_cxy_list = []  # 0 代表初始帧
-    fgt_cxy_list = []
     pred_cxy_list = []
-    for gt_, fgt_, pred_ in zip(gt, fgt, pred):
+    for gt_, pred_ in zip(gt, pred):
         gt_cxy = xywh2cxywh(gt_)[:2] * (scale_w, scale_h)
-        fgt_cxy = xywh2cxywh(fgt_)[:2] * (scale_w, scale_h)
         pred_cxy = xywh2cxywh(pred_)[:2] * (scale_w, scale_h)
         draw_trajectory.ellipse([tuple(gt_cxy - wp), tuple(gt_cxy + wp)], fill='red')
-        draw_trajectory.ellipse([tuple(fgt_cxy - wp), tuple(fgt_cxy + wp)], fill='yellow')
         gt_cxy_list.append(gt_cxy)
-        fgt_cxy_list.append(fgt_cxy)
         pred_cxy_list.append(pred_cxy)
     """END：绘制 GT/FGT 完整轨迹"""
 
     """START：主体绘制循环"""
-    for pred_, gt_, fgt_, img_path in zip(pred, gt, fgt, imgs):
+    for pred_, gt_, img_path in zip(pred, gt, imgs):
         img = Image.open(img_path)
         img = img.convert("RGBA").resize((target_w, target_h))
         draw = ImageDraw.Draw(img)
         img_gt = copy.deepcopy(img)  # 仅具有 gt 框
-        img_fgt = copy.deepcopy(img)  # 仅具有 fgt 框
         img_pred = copy.deepcopy(img)  # 仅具有 pred 框
         draw_gt = ImageDraw.Draw(img_gt)
-        draw_fgt = ImageDraw.Draw(img_fgt)
         draw_pred = ImageDraw.Draw(img_pred)
 
         # """START：绘制当前帧的边框的中心点"""
@@ -96,12 +91,9 @@ def visualize(pred, gt, fgt, video_name, dataset_dir, overwrite):
         """START：可视化矩形框"""
         pred_xyxy = list(xywh2xyxy(pred_) * (scale_w, scale_w, scale_w, scale_h))
         gt_xyxy = list(xywh2xyxy(gt_) * (scale_w, scale_w, scale_w, scale_h))
-        fgt_xyxy = list(xywh2xyxy(fgt_) * (scale_w, scale_w, scale_w, scale_h))
         draw.rectangle(pred_xyxy, fill=None, outline='green', width=w)
         draw.rectangle(gt_xyxy, fill=None, outline='red', width=w)
-        # draw.rectangle(fgt_xyxy, fill=None, outline='yellow', width=6)
         draw_gt.rectangle(gt_xyxy, fill=None, outline='red', width=w)
-        draw_fgt.rectangle(fgt_xyxy, fill=None, outline='yellow', width=w)
         draw_pred.rectangle(pred_xyxy, fill=None, outline='green', width=w)
         """END：可视化矩形框"""
 
@@ -120,7 +112,6 @@ def visualize(pred, gt, fgt, video_name, dataset_dir, overwrite):
 
         img_list.append(img)
         img_gt_list.append(img_gt)
-        img_fgt_list.append(img_fgt)
         img_pred_list.append(img_pred)
     """END：主体绘制循环"""
 
@@ -129,11 +120,9 @@ def visualize(pred, gt, fgt, video_name, dataset_dir, overwrite):
     mid_frame_name = 50  # 从1开始
     frame_mid = draw_history_trajectory(img_list[mid_frame_name-1],
                                         gt_cxy_list[mid_frame_name-30:mid_frame_name+1],
-                                        fgt_cxy_list[mid_frame_name-30:mid_frame_name+1],
                                         pred_cxy_list[mid_frame_name-30:mid_frame_name+1])
     frame_end = draw_history_trajectory(img_list[-1],
                                         gt_cxy_list[-30:-1],
-                                        fgt_cxy_list[-30:-1],
                                         pred_cxy_list[-30:-1])
     end_frame_name = len(img_list)
     only_save_special_frames = True
@@ -189,17 +178,15 @@ def run_per_video(video_name, gt, overwrite):
         pred_txt_path = os.path.join(pred_dir, video_name, video_name + "_001.txt")
     else:
         assert False, dataset_name
-    fgt_txt_path = os.path.join(fgt_root, video_name + '.txt')
     pred = np.loadtxt(pred_txt_path, delimiter=',')
-    fgt = np.loadtxt(fgt_txt_path, delimiter=',')
-    visualize(pred, gt, fgt, video_name, dataset_dir, overwrite)
+    visualize(pred, gt, video_name, dataset_dir, overwrite)
 
 
 def visualize_txt_result(overwrite):
     video_names = sorted(os.listdir(pred_dir))
     for video_name, gt in zip(video_names, dataset_tool.dataset):
-        if video_name != 'GOT-10k_Val_000006':
-            continue
+        # if video_name != 'GOT-10k_Val_000006':
+        #     continue
         run_per_video(video_name, gt[1], overwrite)
 
 
@@ -227,15 +214,10 @@ if __name__ == '__main__':
     elif dataset_name == 'GOT-10k_Val':
         dataset_root = os.path.join(root, 'video_analyst/datasets/GOT-10k')
         dataset_tool = ExperimentGOT10k(dataset_root, subset='val')
-        pred_dir = os.path.join(root, 'video_analyst/snapshots/'
-                                      'train_set=fulldata_FGSM_'
-                                      'cls=1.0_ctr=1.0_reg=1.0_l2_z=0.005_l2_x=1e-05_lr_z=0.1_lr_x=0.5/result/32768')
+        pred_dir = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/64/result/siamfcpp_googlenet/2048')
     else:
         assert False, dataset_name
     save_root = os.path.join(
         root,
-        'video_analyst/snapshots/train_set=fulldata_FGSM_'
-        'cls=1.0_ctr=1.0_reg=1.0_l2_z=0.005_l2_x=1e-05_lr_z=0.1_lr_x=0.5/'
-        '{}/visualization/32768/txt'.format(dataset_name))
-    fgt_root = os.path.join(root, 'patch_anno', dataset_name)
+        '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_imperceptible_patch/64/visualization/2048_txt')
     visualize_txt_result(overwrite=True)
