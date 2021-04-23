@@ -54,5 +54,5 @@ def main():
 if __name__ == '__main__':
     os.environ['CUDA_VISIBLE_DEVICES'] = '2'
     root = '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_imperceptible_patch/64'
-    num = 2048
+    num = 8192
     main()

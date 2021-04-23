@@ -19,8 +19,8 @@ from videoanalyst.utils import complete_path_wt_root_in_cfg
 def make_parser():
     parser = argparse.ArgumentParser(description='Test')
     parser.add_argument('-cfg', '--config', default='experiments/siamfcpp/test/got10k/siamfcpp_googlenet-got.yaml', type=str, help='experiment configuration')
-    parser.add_argument('--dataset_name', type=str, default='GOT-10k_Val')
-    parser.add_argument('--loop_num', type=int, default=2048)
+    parser.add_argument('--dataset_name', type=str)
+    parser.add_argument('--loop_num', type=int, default=4096)
     parser.add_argument('--do_attack', type=str, default='true')
     parser.add_argument('--trainset', default='fulldata', type=str)
     parser.add_argument('--optimize_mode', default='FGSM', type=str)

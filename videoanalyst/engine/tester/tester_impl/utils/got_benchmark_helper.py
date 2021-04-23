@@ -62,7 +62,7 @@ class PipelineTracker(object):
         """
         return self.pipeline.update(image)
 
-    def track(self, img_files: List, box, visualize: bool = False):
+    def track(self, img_files: List, box, visualize: bool = False, gts = None):
         """Perform tracking on a given video sequence
         
         Parameters
@@ -80,7 +80,7 @@ class PipelineTracker(object):
             [description]
         """
         """START：读入补丁的真实位置"""
-        dataset_name = self.pipeline.dataset_name  # 'OTB_2015' or 'LaSOT' or 'GOT-10k_Val'
+        dataset_name = self.pipeline.dataset_name
         if dataset_name == 'OTB_2015':
             video_name = img_files[0].split('/')[-3]
         elif dataset_name == 'GOT-10k_Val':
@@ -89,9 +89,7 @@ class PipelineTracker(object):
             video_name = img_files[0].split('/')[-3]
         else:
             assert False, dataset_name
-        patch_annos_path = os.path.join(
-            '/home/etvuz/projects/adversarial_attack/patch_anno/{}/{}.txt'.format(dataset_name, video_name))
-        patch_annos = np.loadtxt(patch_annos_path, delimiter=',')
+        patch_annos = gts
         """END：读入补丁的真实位置"""
 
         frame_num = len(img_files)
@@ -106,7 +104,10 @@ class PipelineTracker(object):
             start_time = time.time()
 
             """START：定义可视化文件夹"""
-            visualize_flag = False
+            if f < 5 or f % 10 == 0:
+                visualize_flag = True
+            else:
+                visualize_flag = False
             if visualize_flag:
                 vis_save_dir = os.path.join(self.pipeline.uap_root, 'visualization',
                                             str(self.pipeline.loop_num), video_name)
@@ -135,7 +136,7 @@ class PipelineTracker(object):
                                          vis_save_dir, f + 1, 'clean_search_img')
                     visualize_search_img(self.pipeline._state['adv_search_img'],
                                          self.pipeline._state['best_box_xyxy_in_search_img'],
-                                         vis_save_dir, f+1, 'adv_search_img')
+                                         vis_save_dir, f+1, 'adv_search_img', self.pipeline._state['gt_xyxy'])
                     visualize_cls_map(self.pipeline._state['cls_pred'], 'cls_pred', vis_save_dir, f+1)
                     visualize_cls_map(self.pipeline._state['ctr_pred'], 'ctr_pred', vis_save_dir, f+1)
                 """END：可视化搜索图像"""

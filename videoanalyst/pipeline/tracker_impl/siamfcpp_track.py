@@ -269,12 +269,21 @@ class SiamFCppTracker(PipelineBase):
             patch_gt_x1_ori, patch_gt_y1_ori, patch_gt_w_ori, patch_gt_h_ori = self._model.patch_gt_xywh_ori
             patch_gt_x2_ori = patch_gt_x1_ori + patch_gt_w_ori
             patch_gt_y2_ori = patch_gt_y1_ori + patch_gt_h_ori
+            
             # 将补丁在原图上的位置转换为在搜索图像上的位置
-            x1, y1 = _point_from_original_img_to_search_img([patch_gt_x1_ori, patch_gt_y1_ori], target_pos, scale_x, x_size)
-            x1 = max(x1, 0)
-            y1 = max(y1, 0)
             w = self.patch_x.shape[2]
             h = self.patch_x.shape[3]
+            x1, y1 = _point_from_original_img_to_search_img([patch_gt_x1_ori, patch_gt_y1_ori], target_pos, scale_x, x_size)
+            real_x2, real_y2 = _point_from_original_img_to_search_img([patch_gt_x2_ori, patch_gt_y2_ori], target_pos, scale_x, x_size)
+            self._state['gt_xyxy'] = [x1, y1, real_x2, real_y2]
+
+            if patch_gt_w_ori > patch_gt_h_ori:  # 如果宽大于高，则放上面
+                y1 = y1 - h - 2
+            else:
+                x1 = x1 - w - 2
+
+            x1 = max(x1, 0)
+            y1 = max(y1, 0)
             # 控制出界（宽）
             search_img_w = im_x_crop.shape[1]  # np, [hw3]
             x2 = x1 + w

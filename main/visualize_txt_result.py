@@ -195,6 +195,7 @@ def visualize_txt_result(overwrite):
 
 
 if __name__ == '__main__':
+    loop_num = 8192
     """START：设定数据集名称"""
     dataset_name = 'GOT-10k_Val'
     print('Dataset Name:', dataset_name)
@@ -214,10 +215,10 @@ if __name__ == '__main__':
     elif dataset_name == 'GOT-10k_Val':
         dataset_root = os.path.join(root, 'video_analyst/datasets/GOT-10k')
         dataset_tool = ExperimentGOT10k(dataset_root, subset='val')
-        pred_dir = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/64/result/siamfcpp_googlenet/2048')
+        pred_dir = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/64/result/siamfcpp_googlenet/{}'.format(loop_num))
     else:
         assert False, dataset_name
     save_root = os.path.join(
         root,
-        '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_imperceptible_patch/64/visualization/2048_txt')
+        '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_imperceptible_patch/64/visualization/{}_txt'.format(loop_num))
     visualize_txt_result(overwrite=True)

@@ -101,7 +101,7 @@ class ExperimentGOT10k(object):
                 # tracking loop
                 boxes, times = tracker.track(img_files,
                                              anno[0, :],
-                                             visualize=visualize)
+                                             visualize=visualize, gts = anno)
 
                 # record results
                 self._record(record_file, boxes, times)

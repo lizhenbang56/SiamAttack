@@ -14,14 +14,17 @@ def to_2d_map(tensor):
     return heatmap
 
 
-def visualize_search_img(adv_search_img, best_box_xyxy_in_search_img, save_root, idx, name):
+def visualize_search_img(adv_search_img, best_box_xyxy_in_search_img, save_root, idx, name, gt_xyxy=None):
     """
     adv_search_img: 未转为 unit8, ndarray, [h,w,3]
     """
     adv_search_img = np.clip(adv_search_img, 0, 255).astype(np.uint8)
     x1, y1, x2, y2 = [int(var) for var in best_box_xyxy_in_search_img]
     assert adv_search_img.flags['C_CONTIGUOUS']
-    # adv_search_img = cv2.rectangle(adv_search_img, (x1, y1), (x2, y2), (0, 255, 0), thickness=2)
+    adv_search_img = cv2.rectangle(adv_search_img, (x1, y1), (x2, y2), (0, 255, 0), thickness=2)
+    if gt_xyxy is not None:
+        gt_x1, gt_y1, gt_x2, gt_y2 = [int(var) for var in gt_xyxy]
+        adv_search_img = cv2.rectangle(adv_search_img, (gt_x1, gt_y1), (gt_x2, gt_y2), (0, 0, 255), thickness=2)
     save_path = os.path.join(save_root, '{}_{}.jpg'.format(idx, name))
     print(save_path)
     assert cv2.imwrite(save_path, adv_search_img)
