@@ -93,8 +93,21 @@ class RegularTrainer(TrainerBase):
         self.lr_z = 0.1
         self.lr_x = 0.1  # 修改成和z一样
         self.optimize_mode = 'FGSM'
-        self.save_name = str(params['patch_size'])
+        
         """END：设定参数"""
+
+        """设定保存路径"""
+        if self.cls_weight == 1.0 and self.ctr_weight == 1.0 and self.reg_weight == 1.0:
+            self.save_name = str(params['patch_size'])
+        elif self.cls_weight == 1.0 and self.ctr_weight == 0.0 and self.reg_weight == 0.0:
+            self.save_name = str(params['patch_size']) + '_ctr100'
+        elif self.cls_weight == 0.0 and self.ctr_weight == 1.0 and self.reg_weight == 0.0:
+            self.save_name = str(params['patch_size']) + '_ctr010'
+        elif self.cls_weight == 0.0 and self.ctr_weight == 0.0 and self.reg_weight == 1.0:
+            self.save_name = str(params['patch_size']) + '_ctr001'
+        else:
+            assert False, self
+        """设定保存路径"""
 
         """START：设置保存路径"""
         print(self.save_name)

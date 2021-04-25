@@ -106,3 +106,17 @@ python main/test.py --config experiments/siamfcpp/test/lasot/siamfcpp_googlenet-
 ```bash
 python main/realtime_eval.py
 ```
+
+# 保存路径
+
+## 训练结果保存路径
+
+snapshots_imperceptible_patch/64
+snapshots_imperceptible_patch/64_ctr100
+
+## 跟踪结果保存路径
+
+```bash
+snapshots_imperceptible_patch/64/result/OTB_2015/siamfcpp_googlenet/8192/Bird1.txt
+snapshots_imperceptible_patch/补丁尺寸/result/数据集/backbone/loop_num
+```

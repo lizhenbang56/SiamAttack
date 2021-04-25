@@ -34,8 +34,8 @@ class ExperimentLaSOT(ExperimentOTB):
                  report_dir='reports'):
         # assert subset.upper() in ['TRAIN', 'TEST']
         self.dataset = LaSOT(root_dir, subset, return_meta=return_meta)
-        self.result_dir = os.path.join(result_dir, 'LaSOT')
-        self.report_dir = os.path.join(report_dir, 'LaSOT')
+        self.result_dir = os.path.join(result_dir)
+        self.report_dir = os.path.join(report_dir)
 
         # as nbins_iou increases, the success score
         # converges to the average overlap (AO)
@@ -65,8 +65,7 @@ class ExperimentLaSOT(ExperimentOTB):
 
             for s, (_, anno) in enumerate(self.dataset):
                 seq_name = self.dataset.seq_names[s]
-                record_file = os.path.join(self.result_dir, name,
-                                           '%s.txt' % seq_name)
+                record_file = os.path.join(self.result_dir, '%s.txt' % seq_name)
                 boxes = np.loadtxt(record_file, delimiter=',')
                 boxes[0] = anno[0]
                 if not (len(boxes) == len(anno)):

@@ -1,6 +1,6 @@
 cls_weight=1.0
-ctr_weight=1.0
-reg_weight=1.0
+ctr_weight=0.0
+reg_weight=0.0
 patch_size=64
 
 source activate pytorch1.4_python3.7

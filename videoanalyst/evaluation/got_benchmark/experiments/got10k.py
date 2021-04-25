@@ -44,8 +44,8 @@ class ExperimentGOT10k(object):
         self.subset = subset
         if use_dataset:
             self.dataset = GOT10k(root_dir, subset=subset, list_file=list_file)
-        self.result_dir = result_dir
-        self.report_dir = report_dir
+        self.result_dir = os.path.join(result_dir)
+        self.report_dir = os.path.join(report_dir)
         self.nbins_iou = 101
         self.repetitions = 3
 

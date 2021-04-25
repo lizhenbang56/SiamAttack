@@ -34,8 +34,8 @@ class ExperimentOTB(object):
         self.dataset = OTB(root_dir, version, download=False, FGT=FGT)
         dump_dirname = ('OTB' +
                         str(version)) if isinstance(version, int) else version
-        self.result_dir = os.path.join(result_dir, dump_dirname)
-        self.report_dir = os.path.join(report_dir, dump_dirname)
+        self.result_dir = os.path.join(result_dir)
+        self.report_dir = os.path.join(report_dir)
         # as nbins_iou increases, the success score
         # converges to the average overlap (AO)
         self.nbins_iou = 21
@@ -69,17 +69,18 @@ class ExperimentOTB(object):
             seq_name = self.dataset.seq_names[s]
             print('--Sequence %d/%d: %s' % (s + 1, len(self.dataset), seq_name))
 
-            # skip if results exist
-            record_file = os.path.join(self.result_dir, tracker.name,
+            """设定跟踪结果文件txt保存路径"""
+            record_file = os.path.join(self.result_dir, tracker.backbone_name, tracker.name,
                                        '%s.txt' % seq_name)
             if os.path.exists(record_file) and not overwrite_result:
                 print('  Found results, skipping', seq_name)
                 continue
+            """设定跟踪结果文件txt保存路径"""
 
             # tracking loop
             boxes, times = tracker.track(img_files,
                                          anno[0, :],
-                                         visualize=visualize)
+                                         visualize=visualize, gts=anno)
             # assert len(boxes) == len(anno) # disabled as annotations for some benchmarks are withholded
 
             # record results
@@ -106,8 +107,7 @@ class ExperimentOTB(object):
 
             for s, (_, anno) in enumerate(self.dataset):
                 seq_name = self.dataset.seq_names[s]
-                record_file = os.path.join(self.result_dir, name,
-                                           '%s.txt' % seq_name)
+                record_file = os.path.join(self.result_dir, '%s.txt' % seq_name)
                 boxes = np.loadtxt(record_file, delimiter=',')
                 boxes[0] = anno[0]
                 if not (len(boxes) == len(anno)):

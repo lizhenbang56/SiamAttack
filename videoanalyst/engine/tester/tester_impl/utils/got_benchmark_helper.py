@@ -105,12 +105,12 @@ class PipelineTracker(object):
 
             """START：定义可视化文件夹"""
             if f < 5 or f % 10 == 0:
-                visualize_flag = True
+                visualize_flag = False
             else:
                 visualize_flag = False
             if visualize_flag:
                 vis_save_dir = os.path.join(self.pipeline.uap_root, 'visualization',
-                                            str(self.pipeline.loop_num), video_name)
+                                            str(self.pipeline.loop_num), dataset_name, video_name)
                 if not os.path.exists(vis_save_dir):
                     os.makedirs(vis_save_dir)
             else:

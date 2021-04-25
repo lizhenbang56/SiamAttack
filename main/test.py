@@ -18,9 +18,8 @@ from videoanalyst.utils import complete_path_wt_root_in_cfg
 
 def make_parser():
     parser = argparse.ArgumentParser(description='Test')
-    parser.add_argument('-cfg', '--config', default='experiments/siamfcpp/test/got10k/siamfcpp_googlenet-got.yaml', type=str, help='experiment configuration')
-    parser.add_argument('--dataset_name', type=str)
-    parser.add_argument('--loop_num', type=int, default=4096)
+    parser.add_argument('--dataset_name', type=str, default='LaSOT')  # 'GOT-10k_Val' 'OTB_2015' 'LaSOT'
+    parser.add_argument('--loop_num', type=int, default=8192)
     parser.add_argument('--do_attack', type=str, default='true')
     parser.add_argument('--trainset', default='fulldata', type=str)
     parser.add_argument('--optimize_mode', default='FGSM', type=str)
@@ -64,9 +63,19 @@ def build_sat_tester(task_cfg):
 
 
 if __name__ == '__main__':
-    # parsing
+    """设置参数"""
     parser = make_parser()
     parsed_args = parser.parse_args()
+    # 设置配置文件路径
+    if parsed_args.dataset_name == 'LaSOT':
+        parsed_args.config = 'experiments/siamfcpp/test/lasot/siamfcpp_googlenet-lasot.yaml'
+    elif parsed_args.dataset_name == 'GOT-10k_Val':
+        parsed_args.config = 'experiments/siamfcpp/test/got10k/siamfcpp_googlenet-got.yaml'
+    elif parsed_args.dataset_name == 'OTB_2015':
+        parsed_args.config = 'experiments/siamfcpp/test/otb/siamfcpp_googlenet-otb.yaml'
+    else:
+        assert False, parsed_args.dataset_name
+    """设置参数"""
 
     """设置GPU"""
     os.environ['CUDA_VISIBLE_DEVICES'] = parsed_args.gpu_id

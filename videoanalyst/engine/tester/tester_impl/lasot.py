@@ -46,17 +46,18 @@ class LaSOTTester(TesterBase):
         self._state["all_devs"] = all_devs
 
     def test(self, ):
-        tracker_name = self._hyper_params["exp_name"]
+        tracker_name = str(self._pipeline.loop_num)
         all_devs = self._state["all_devs"]
         nr_devs = len(all_devs)
 
         for subset in self._hyper_params["subsets"]:
+            """设定保存文件夹路径"""
             root_dir = self._hyper_params["data_root"]
             dataset_name = "GOT-Benchmark"  # the name of benchmark toolkit, shown under "repo/logs" directory
-            save_root_dir = osp.join(self._hyper_params["exp_save"],
-                                     dataset_name)
+            save_root_dir = self._pipeline.uap_root
             result_dir = osp.join(save_root_dir, "result")
             report_dir = osp.join(save_root_dir, "report")
+            """设定保存文件夹路径"""
 
             experiment = ExperimentLaSOT(root_dir,
                                          subset=subset,
@@ -66,7 +67,7 @@ class LaSOTTester(TesterBase):
             if nr_devs == 1:
                 dev = all_devs[0]
                 self._pipeline.set_device(dev)
-                pipeline_tracker = PipelineTracker(tracker_name, self._pipeline)
+                pipeline_tracker = PipelineTracker(tracker_name, self._hyper_params["exp_name"], self._pipeline)
                 experiment.run(pipeline_tracker)
             # multi-worker
             else:

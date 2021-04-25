@@ -56,9 +56,9 @@ if __name__ == '__main__':
     parser = make_parser()
     parsed_args = parser.parse_args()
 
-    """指定GPU"""
+    # """指定GPU"""
     # os.environ['CUDA_VISIBLE_DEVICES'] = parsed_args.gpu_id
-    """指定GPU"""
+    # """指定GPU"""
 
     # experiment config
     exp_cfg_path = osp.realpath(parsed_args.config)
