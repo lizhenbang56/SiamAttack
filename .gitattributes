@@ -1,15 +1,1 @@
-*.py eol=crlf
-*.yaml eol=crlf
-*.sh eol=crlf
-*.md eol=crlf
-*.txt eol=crlf
-*.c eol=crlf
-*.h eol=crlf
-*.json eol=crlf
-*.cfg eol=crlf
-*.yml eol=crlf
-*.pyx eol=crlf
-*.pxd eol=crlf
-Dockerfile eol=crlf
-LICENSE eol=crlf
-*.yapf eol=crlf
+* binary
