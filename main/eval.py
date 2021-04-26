@@ -15,10 +15,10 @@ from videoanalyst.evaluation.got_benchmark.experiments.lasot import ExperimentLa
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Eval')
-    parser.add_argument('--dataset_name', type=str, default='LaSOT')  # 'OTB_2015' 'LaSOT' 'GOT-10k_Val'
-    parser.add_argument('--loop_num', type=int, default=8192)
-    parser.add_argument('--backbone_name', type=str, default='siamfcpp_googlenet')
-    parser.add_argument('--tracker_name', type=str, default='64')
+    parser.add_argument('--dataset_name', type=str, default='GOT-10k_Val')  # 'OTB_2015' 'LaSOT' 'GOT-10k_Val'
+    parser.add_argument('--loop_num', type=int, default=2048)
+    parser.add_argument('--backbone_name', type=str, default='googlenet')
+    parser.add_argument('--tracker_name', type=str, default='32')
     return parser.parse_args()
 
 
@@ -62,7 +62,10 @@ def eval_got10k_val():
         """END：计算时间"""
     fgt_ious = np.concatenate(list(fgt_ious.values()))
     gt_ious = np.concatenate(list(gt_ious.values()))
-    times = np.concatenate(list(times.values()))
+    try:
+        times = np.concatenate(list(times.values()))
+    except Exception:
+        times = []
     fgt_ao, fgt_sr_50, fgt_speed, fgt_succ_curve = experimentGOT10k._evaluate(fgt_ious, times)
     gt_ao, gt_sr_50, gt_speed, gt_succ_curve = experimentGOT10k._evaluate(gt_ious, times)
     
@@ -127,6 +130,7 @@ if __name__ == '__main__':
     args = parse_args()
     dataset_name = args.dataset_name
     loop_num = args.loop_num
+    args.backbone_name = 'siamfcpp_' + args.backbone_name
     backbone_name = args.backbone_name
 
     """设置文件夹路径"""
@@ -149,6 +153,8 @@ if __name__ == '__main__':
         assert False, dataset_name
 
     """评估结果展示与保存"""
+    if not os.path.exists(report_root):
+        os.makedirs(report_root)
     save_path = os.path.join(report_root, 'report.txt')
     report_str = gt_str + '\n' + fgt_str
     with open(save_path, 'w') as f:

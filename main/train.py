@@ -46,7 +46,7 @@ def make_parser():
     parser.add_argument('--ctr_weight', default=1.0, type=float)
     parser.add_argument('--reg_weight', default=1.0, type=float)
     parser.add_argument('--patch_size', type=int, default=64)
-    parser.add_argument('--gpu_id', type=str, default='2')
+    parser.add_argument('--gpu_id', type=str, default='1,2,3')
 
     return parser
 
@@ -56,9 +56,9 @@ if __name__ == '__main__':
     parser = make_parser()
     parsed_args = parser.parse_args()
 
-    # """指定GPU"""
-    # os.environ['CUDA_VISIBLE_DEVICES'] = parsed_args.gpu_id
-    # """指定GPU"""
+    """指定GPU"""
+    os.environ['CUDA_VISIBLE_DEVICES'] = parsed_args.gpu_id
+    """指定GPU"""
 
     # experiment config
     exp_cfg_path = osp.realpath(parsed_args.config)

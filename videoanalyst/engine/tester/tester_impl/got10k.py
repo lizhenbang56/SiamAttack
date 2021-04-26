@@ -86,7 +86,7 @@ class GOT10kTester(TesterBase):
                 for p in procs:
                     p.join()
             # evalutate
-            # performance = experiment.report([tracker_name], plot_curves=False)
+            performance = None
 
         test_result_dict = dict()
         if performance is not None:

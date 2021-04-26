@@ -7,13 +7,14 @@ cd /home/etvuz/projects/adversarial_attack/video_analyst
 # 设置变量
 loop_num=8192
 patch_size=64
-dataset_name="LaSOT"  # "OTB_2015" "GOT-10k_Val"
+dataset_name="GOT-10k_Val"  # "OTB_2015" "GOT-10k_Val"
+backbone="shufflenetv2x1_0"  # "shufflenetv2x1_0"
 # 设置变量
 
 # 测试
-python main/test.py --loop_num=$loop_num --patch_size=$patch_size --dataset_name=$dataset_name
+python main/test.py --loop_num=$loop_num --patch_size=$patch_size --dataset_name=$dataset_name --backbone=$backbone
 # 测试
 
 # 评估
-python main/eval.py --loop_num=$loop_num --dataset_name=$dataset_name --tracker_name=$patch_size
+python main/eval.py --loop_num=$loop_num --dataset_name=$dataset_name --tracker_name=$patch_size --backbone_name=$backbone
 # 评估

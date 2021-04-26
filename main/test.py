@@ -18,7 +18,7 @@ from videoanalyst.utils import complete_path_wt_root_in_cfg
 
 def make_parser():
     parser = argparse.ArgumentParser(description='Test')
-    parser.add_argument('--dataset_name', type=str, default='LaSOT')  # 'GOT-10k_Val' 'OTB_2015' 'LaSOT'
+    parser.add_argument('--dataset_name', type=str, default='GOT-10k_Val')  # 'GOT-10k_Val' 'OTB_2015' 'LaSOT'
     parser.add_argument('--loop_num', type=int, default=8192)
     parser.add_argument('--do_attack', type=str, default='true')
     parser.add_argument('--trainset', default='fulldata', type=str)
@@ -32,6 +32,7 @@ def make_parser():
     parser.add_argument('--lr_x', default=0.5, type=float)
     parser.add_argument('--gpu_id', default='2', type=str)
     parser.add_argument('--patch_size', type=int, default=64)
+    parser.add_argument('--backbone', type=str, default='alexnet')  # 'alexnet' 'shufflenetv2x1_0'
     return parser
 
 
@@ -68,11 +69,11 @@ if __name__ == '__main__':
     parsed_args = parser.parse_args()
     # 设置配置文件路径
     if parsed_args.dataset_name == 'LaSOT':
-        parsed_args.config = 'experiments/siamfcpp/test/lasot/siamfcpp_googlenet-lasot.yaml'
+        parsed_args.config = 'experiments/siamfcpp/test/lasot/siamfcpp_{}-lasot.yaml'.format(parsed_args.backbone)
     elif parsed_args.dataset_name == 'GOT-10k_Val':
-        parsed_args.config = 'experiments/siamfcpp/test/got10k/siamfcpp_googlenet-got.yaml'
+        parsed_args.config = 'experiments/siamfcpp/test/got10k/siamfcpp_{}-got.yaml'.format(parsed_args.backbone)
     elif parsed_args.dataset_name == 'OTB_2015':
-        parsed_args.config = 'experiments/siamfcpp/test/otb/siamfcpp_googlenet-otb.yaml'
+        parsed_args.config = 'experiments/siamfcpp/test/otb/siamfcpp_{}-otb.yaml'.format(parsed_args.backbone)
     else:
         assert False, parsed_args.dataset_name
     """设置参数"""
