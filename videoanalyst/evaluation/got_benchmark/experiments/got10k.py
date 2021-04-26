@@ -38,14 +38,26 @@ class ExperimentGOT10k(object):
                  list_file=None,
                  result_dir='results',
                  report_dir='reports',
-                 use_dataset=True):
+                 use_dataset=True,
+                 fgt_dir=None,
+                 phase='track'):
         super(ExperimentGOT10k, self).__init__()
         assert subset in ['val', 'test']
         self.subset = subset
         if use_dataset:
             self.dataset = GOT10k(root_dir, subset=subset, list_file=list_file)
-        self.result_dir = os.path.join(result_dir)
-        self.report_dir = os.path.join(report_dir)
+        
+        """设置文件夹"""
+        if phase == 'eval':
+            self.result_dir = result_dir
+            self.report_dir = report_dir
+            self.fgt_dir = fgt_dir
+        else:
+            self.result_dir = os.path.join(result_dir, 'GOT-10k_Val')
+            self.report_dir = os.path.join(report_dir, 'GOT-10k_Val')
+            self.fgt_dir = os.path.join(fgt_dir, 'GOT-10k_Val')
+        """设置文件夹"""
+
         self.nbins_iou = 101
         self.repetitions = 3
 
@@ -90,21 +102,28 @@ class ExperimentGOT10k(object):
                     break
                 print(' Repetition: %d' % (r + 1))
 
-                # skip if results exist
+                """设定跟踪结果文件txt保存路径"""
                 record_file = os.path.join(self.result_dir, tracker.backbone_name, tracker.name,
                                            seq_name,
                                            '%s_%03d.txt' % (seq_name, r + 1))
                 if os.path.exists(record_file) and not overwrite_result:
                     print('  Found results, skipping', seq_name)
                     continue
+                """设定跟踪结果文件txt保存路径"""
+
+                """设定FGT文件txt保存路径"""
+                fgt_file = os.path.join(self.fgt_dir, tracker.backbone_name, tracker.name, '%s.txt' % seq_name)
+                """设定FGT文件txt保存路径"""
 
                 # tracking loop
-                boxes, times = tracker.track(img_files,
+                boxes, times, boxes_fgt = tracker.track(img_files,
                                              anno[0, :],
                                              visualize=visualize, gts = anno)
 
-                # record results
-                self._record(record_file, boxes, times)
+                """保存跟踪结果和FGT"""
+                self._record(record_file, boxes)
+                self._record(fgt_file, boxes_fgt)
+                """保存跟踪结果和FGT"""
 
             # save videos
             if save_video:
@@ -289,7 +308,7 @@ class ExperimentGOT10k(object):
                                'purple', 'brown', 'pink'
                            ])
 
-    def _record(self, record_file, boxes, times):
+    def _record(self, record_file, boxes):
         # record bounding boxes
         record_dir = os.path.dirname(record_file)
         if not os.path.isdir(record_dir):
@@ -299,16 +318,6 @@ class ExperimentGOT10k(object):
             print('warning: recording failed, retrying...')
             np.savetxt(record_file, boxes, fmt='%.3f', delimiter=',')
         print('  Results recorded at', record_file)
-
-        # record running times
-        time_file = record_file[:record_file.rfind('_')] + '_time.txt'
-        times = times[:, np.newaxis]
-        if os.path.exists(time_file):
-            exist_times = np.loadtxt(time_file, delimiter=',')
-            if exist_times.ndim == 1:
-                exist_times = exist_times[:, np.newaxis]
-            times = np.concatenate((exist_times, times), axis=1)
-        np.savetxt(time_file, times, fmt='%.8f', delimiter=',')
 
     def _check_deterministic(self, tracker_name, seq_name):
         record_dir = os.path.join(self.result_dir, tracker_name, seq_name)

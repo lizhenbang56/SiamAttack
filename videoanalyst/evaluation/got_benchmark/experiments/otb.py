@@ -29,13 +29,25 @@ class ExperimentOTB(object):
                  version=2015,
                  result_dir='results',
                  report_dir='reports',
-                 FGT=False):
+                 FGT=False,
+                 fgt_dir=None,
+                 phase='test'):
         super(ExperimentOTB, self).__init__()
-        self.dataset = OTB(root_dir, version, download=False, FGT=FGT)
+        self.dataset = OTB(root_dir, version, download=False, FGT=FGT, fgt_dir=fgt_dir)
         dump_dirname = ('OTB' +
                         str(version)) if isinstance(version, int) else version
-        self.result_dir = os.path.join(result_dir)
-        self.report_dir = os.path.join(report_dir)
+
+        """设置文件夹"""
+        if phase == 'eval':
+            self.result_dir = result_dir
+            self.report_dir = report_dir
+            self.fgt_dir = fgt_dir
+        else:
+            self.result_dir = os.path.join(result_dir, 'OTB_2015')
+            self.report_dir = os.path.join(report_dir, 'OTB_2015')
+            self.fgt_dir = os.path.join(fgt_dir, 'OTB_2015')
+        """设置文件夹"""
+        
         # as nbins_iou increases, the success score
         # converges to the average overlap (AO)
         self.nbins_iou = 21
@@ -77,20 +89,26 @@ class ExperimentOTB(object):
                 continue
             """设定跟踪结果文件txt保存路径"""
 
+            """设定FGT文件txt保存路径"""
+            fgt_file = os.path.join(self.fgt_dir, tracker.backbone_name, tracker.name, '%s.txt' % seq_name)
+            """设定FGT文件txt保存路径"""
+
             # tracking loop
-            boxes, times = tracker.track(img_files,
+            boxes, times, boxes_fgt = tracker.track(img_files,
                                          anno[0, :],
                                          visualize=visualize, gts=anno)
             # assert len(boxes) == len(anno) # disabled as annotations for some benchmarks are withholded
 
-            # record results
+            """保存跟踪结果和FGT"""
             self._record(record_file, boxes, times)
+            self._record(fgt_file, boxes_fgt, times)
+            """保存跟踪结果和FGT"""
 
     def report(self, tracker_names, plot_curves=True):
         assert isinstance(tracker_names, (list, tuple))
 
         # assume tracker_names[0] is your tracker
-        report_dir = os.path.join(self.report_dir, tracker_names[0])
+        report_dir = self.report_dir
         if not os.path.isdir(report_dir):
             os.makedirs(report_dir)
         report_file = os.path.join(report_dir, 'performance.json')
@@ -257,7 +275,7 @@ class ExperimentOTB(object):
 
     def plot_curves(self, tracker_names):
         # assume tracker_names[0] is your tracker
-        report_dir = os.path.join(self.report_dir, tracker_names[0])
+        report_dir = self.report_dir
         assert os.path.exists(report_dir), \
             'No reports found. Run "report" first' \
             'before plotting curves.'

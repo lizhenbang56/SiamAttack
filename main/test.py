@@ -77,9 +77,9 @@ if __name__ == '__main__':
         assert False, parsed_args.dataset_name
     """设置参数"""
 
-    """设置GPU"""
-    os.environ['CUDA_VISIBLE_DEVICES'] = parsed_args.gpu_id
-    """设置GPU"""
+    # """设置GPU"""
+    # os.environ['CUDA_VISIBLE_DEVICES'] = parsed_args.gpu_id
+    # """设置GPU"""
 
     # experiment config
     exp_cfg_path = osp.realpath(parsed_args.config)

@@ -40,7 +40,7 @@ class OTBTester(TesterBase):
         # set device state
         num_gpu = self._hyper_params["device_num"]
         if num_gpu > 0:
-            all_devs = [torch.device("cuda:%d" % i) for i in range(num_gpu)]
+            all_devs = [torch.device("cuda:%d" % i) for i in range(4)] * 2
         else:
             all_devs = [torch.device("cpu")]
         self._state["all_devs"] = all_devs
@@ -57,12 +57,14 @@ class OTBTester(TesterBase):
             save_root_dir = self._pipeline.uap_root
             result_dir = osp.join(save_root_dir, "result")
             report_dir = osp.join(save_root_dir, "report")
+            fgt_dir = osp.join(save_root_dir, "FGT")
             """设定保存文件夹路径"""
 
             experiment = ExperimentOTB(root_dir,
                                        version=subset,
                                        result_dir=result_dir,
-                                       report_dir=report_dir)
+                                       report_dir=report_dir,
+                                       fgt_dir=fgt_dir)
             # single worker
             if nr_devs == 1:
                 dev = all_devs[0]
@@ -78,13 +80,13 @@ class OTBTester(TesterBase):
                                         slicing_step * (dev_id + 1))
                     proc = mp.Process(target=self.worker,
                                       args=(dev_id, dev, subset,
-                                            slicing_quantile))
+                                            slicing_quantile, tracker_name, save_root_dir, fgt_dir))
                     proc.start()
                     procs.append(proc)
                 for p in procs:
                     p.join()
             # evalutate
-            performance = experiment.report([tracker_name], plot_curves=False)
+            # performance = experiment.report([tracker_name], plot_curves=False)
 
         test_result_dict = dict()
         if performance is not None:
@@ -94,25 +96,24 @@ class OTBTester(TesterBase):
             test_result_dict["main_performance"] = -1
         return test_result_dict
 
-    def worker(self, dev_id, dev, subset, slicing_quantile):
+    def worker(self, dev_id, dev, subset, slicing_quantile, tracker_name, save_root_dir, fgt_dir):
         logger.debug("Worker starts: slice {} at {}".format(
             slicing_quantile, dev))
-        tracker_name = self._hyper_params["exp_name"]
 
         pipeline = self._pipeline
         pipeline.set_device(dev)
-        pipeline_tracker = PipelineTracker(tracker_name, pipeline)
+        pipeline_tracker = PipelineTracker(tracker_name, self._hyper_params["exp_name"], pipeline)
 
         root_dir = self._hyper_params["data_root"]
         dataset_name = "GOT-Benchmark"  # the name of benchmark toolkit, shown under "repo/logs" directory
-        save_root_dir = osp.join(self._hyper_params["exp_save"], dataset_name)
         result_dir = osp.join(save_root_dir, "result")
         report_dir = osp.join(save_root_dir, "report")
 
         experiment = ExperimentOTB(root_dir,
                                    version=subset,
                                    result_dir=result_dir,
-                                   report_dir=report_dir)
+                                   report_dir=report_dir,
+                                   fgt_dir=fgt_dir)
         experiment.run(pipeline_tracker, slicing_quantile=slicing_quantile)
         logger.debug("Worker ends: slice {} at {}".format(
             slicing_quantile, dev))

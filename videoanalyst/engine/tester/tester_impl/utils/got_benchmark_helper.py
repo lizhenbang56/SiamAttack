@@ -79,7 +79,7 @@ class PipelineTracker(object):
         [type]
             [description]
         """
-        """START：读入补丁的真实位置"""
+        """获取dataset_name"""
         dataset_name = self.pipeline.dataset_name
         if dataset_name == 'OTB_2015':
             video_name = img_files[0].split('/')[-3]
@@ -89,18 +89,27 @@ class PipelineTracker(object):
             video_name = img_files[0].split('/')[-3]
         else:
             assert False, dataset_name
-        patch_annos = gts
-        """END：读入补丁的真实位置"""
+        """获取dataset_name"""
 
+        """变量初始化"""
+        patch_annos = gts
         frame_num = len(img_files)
+        times = np.zeros(frame_num)
+        """变量初始化"""
+        
+        """初始化用于保存跟踪结果的数组"""
         boxes = np.zeros((frame_num, 4))
         boxes[0] = box
-        times = np.zeros(frame_num)
+        """初始化用于保存跟踪结果的数组"""
+
+        """初始化用于保存FGT的数组"""
+        boxes_fgt = np.zeros((frame_num, 4))
+        boxes_fgt[0] = box
+        """初始化用于保存FGT的数组"""
 
         for f, img_file in enumerate(img_files):
             self.pipeline._model.patch_gt_xywh_ori = patch_annos[f]
             image = cv2.imread(img_file, cv2.IMREAD_COLOR)
-
             start_time = time.time()
 
             """START：定义可视化文件夹"""
@@ -118,7 +127,10 @@ class PipelineTracker(object):
             """END：定义可视化文件夹"""
 
             if f == 0:
+
+                """初始化跟踪器"""
                 self.init(image, box)
+                """初始化跟踪器"""
 
                 """START：可视化模板图像"""
                 if visualize_flag:
@@ -127,7 +139,10 @@ class PipelineTracker(object):
                 """END：可视化模板图像"""
 
             else:
-                boxes[f, :] = self.update(image)
+                
+                """进行跟踪"""
+                boxes[f, :], boxes_fgt[f, :] = self.update(image)
+                """进行跟踪"""
 
                 """START：可视化搜索图像"""
                 if visualize_flag:
@@ -146,4 +161,4 @@ class PipelineTracker(object):
             if visualize:
                 show_frame(image, boxes[f, :])
 
-        return boxes, times
+        return boxes, times, boxes_fgt

@@ -1,3 +1,5 @@
+import sys
+sys.path.append('/home/etvuz/projects/adversarial_attack/video_analyst')
 import os
 import ast
 import glob
@@ -13,18 +15,10 @@ from videoanalyst.evaluation.got_benchmark.experiments.lasot import ExperimentLa
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Eval')
-    parser.add_argument('--dataset_name', type=str, default='GOT-10k_Val')
-    parser.add_argument('--loop_num', type=int, default=32768)
-    parser.add_argument('--backbone_name', type=str)
-    parser.add_argument('--trainset', default='fulldata', type=str)
-    parser.add_argument('--optimize_mode', default='FGSM', type=str)
-    parser.add_argument('--cls_weight', type=float)
-    parser.add_argument('--ctr_weight', type=float)
-    parser.add_argument('--reg_weight', type=float)
-    parser.add_argument('--l2_z_weight', default=0.005, type=float)
-    parser.add_argument('--l2_x_weight', default=0.00001, type=float)
-    parser.add_argument('--lr_z', default=0.1, type=float)
-    parser.add_argument('--lr_x', default=0.5, type=float)
+    parser.add_argument('--dataset_name', type=str, default='LaSOT')  # 'OTB_2015' 'LaSOT' 'GOT-10k_Val'
+    parser.add_argument('--loop_num', type=int, default=8192)
+    parser.add_argument('--backbone_name', type=str, default='siamfcpp_googlenet')
+    parser.add_argument('--tracker_name', type=str, default='64')
     return parser.parse_args()
 
 
@@ -71,40 +65,46 @@ def eval_got10k_val():
     times = np.concatenate(list(times.values()))
     fgt_ao, fgt_sr_50, fgt_speed, fgt_succ_curve = experimentGOT10k._evaluate(fgt_ious, times)
     gt_ao, gt_sr_50, gt_speed, gt_succ_curve = experimentGOT10k._evaluate(gt_ious, times)
-    print('FGT AO={:.3f} SR50={:.3f}'.format(fgt_ao, fgt_sr_50))
-    print('GT AO={:.3f} SR50={:.3f}'.format(gt_ao, gt_sr_50))
-    return
+    
+    fgt_str = 'FGT AO={:.3f} SR50={:.3f}'.format(fgt_ao, fgt_sr_50)
+    gt_str = 'GT AO={:.3f} SR50={:.3f}'.format(gt_ao, gt_sr_50)
+    return gt_str, fgt_str
 
 
 def eval_otb_2015(false_ground_truth):
     experiment = ExperimentOTB('/home/etvuz/projects/adversarial_attack/video_analyst/datasets/OTB/OTB2015',
                                version=2015,
-                               result_dir=os.path.join(root, 'video_analyst/logs/GOT-Benchmark/result'),
-                               FGT=false_ground_truth)
+                               result_dir=result_root,
+                               report_dir=report_root,
+                               FGT=false_ground_truth, phase='eval', fgt_dir=FGT_root)
     eval_result = experiment.report(['siamfcpp_googlenet'])['siamfcpp_googlenet']['overall']
     if false_ground_truth:
         phase = 'FGT'
     else:
         phase = 'GT'
-    print('{} Success={:.3f}, Precision={:.3f}, {} FPS'.format(phase, eval_result['success_score'],
-                                                            eval_result['precision_score'],
-                                                            int(eval_result['speed_fps'])))
 
+    print_str = '{} Success={:.3f}, Precision={:.3f}, {} FPS'.format(phase, eval_result['success_score'],
+                                                            eval_result['precision_score'],
+                                                            int(eval_result['speed_fps']))
+    return print_str
+ 
 
 def eval_lasot():
     experiment = ExperimentLaSOT('/home/etvuz/projects/adversarial_attack/video_analyst/datasets/LaSOT',
                                  subset='test',
                                  return_meta=False,
-                                 result_dir=os.path.join(root, 'video_analyst/logs/GOT-Benchmark/result_attack'))
+                                 report_dir=report_root,
+                                 result_dir=result_root, phase='eval')
     eval_result = experiment.report(['siamfcpp_googlenet'])['siamfcpp_googlenet']['overall']
-    print(
-        'GT Success score={:.3f} Success rate={:.3f} Precision score={:.3f} Norm precision score={:.3f} {} FPS'.format(
+    
+    gt_str = 'GT Success score={:.3f} Success rate={:.3f} Precision score={:.3f} Norm precision score={:.3f} {} FPS'.format(
             eval_result['success_score'],
             eval_result['success_rate'],
             eval_result['precision_score'],
             eval_result['normalized_precision_score'],
-            int(eval_result['speed_fps'])))
-    fgt_paths = sorted(glob.glob('/home/etvuz/projects/adversarial_attack/patch_anno/LaSOT/*.txt'))
+            int(eval_result['speed_fps']))
+    
+    fgt_paths = sorted(glob.glob(os.path.join(FGT_root, '*.txt')))
     annos = {}
     for path in fgt_paths:
         video_name = path.split('/')[-1].split('.')[0]
@@ -112,12 +112,15 @@ def eval_lasot():
     for k, v in experiment.dataset.seq_datas.items():
         v['anno'] = annos[k]
     eval_result = experiment.report(['siamfcpp_googlenet'])['siamfcpp_googlenet']['overall']
-    print('FGT Success score={:.3f} Success rate={:.3f} Precision score={:.3f} Norm precision score={:.3f} {} FPS'.format(
+    
+    fgt_str = 'FGT Success score={:.3f} Success rate={:.3f} Precision score={:.3f} Norm precision score={:.3f} {} FPS'.format(
         eval_result['success_score'],
         eval_result['success_rate'],
         eval_result['precision_score'],
         eval_result['normalized_precision_score'],
-        int(eval_result['speed_fps'])))
+        int(eval_result['speed_fps']))
+    
+    return gt_str, fgt_str
 
 
 if __name__ == '__main__':
@@ -125,25 +128,31 @@ if __name__ == '__main__':
     dataset_name = args.dataset_name
     loop_num = args.loop_num
     backbone_name = args.backbone_name
+
+    """设置文件夹路径"""
     root = '/home/etvuz/projects/adversarial_attack'
+    result_root = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/{}/result/{}/{}/{}'.format(args.tracker_name, args.dataset_name, args.backbone_name, args.loop_num))
+    report_root = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/{}/report/{}/{}/{}'.format(args.tracker_name, args.dataset_name, args.backbone_name, args.loop_num))
+    FGT_root = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/{}/FGT/{}/{}/{}'.format(args.tracker_name, args.dataset_name, args.backbone_name, args.loop_num))
+    """设置文件夹路径"""    
+    
     if dataset_name == 'OTB_2015':
-        result_root = os.path.join(root, 'video_analyst/logs/GOT-Benchmark/result/otb2015/siamfcpp_googlenet')
-        eval_otb_2015(false_ground_truth=True)
-        eval_otb_2015(false_ground_truth=False)
+        fgt_str = eval_otb_2015(false_ground_truth=True)
+        gt_str = eval_otb_2015(false_ground_truth=False)
     elif dataset_name == 'LaSOT':
-        result_root = os.path.join(root, 'video_analyst/logs/GOT-Benchmark/result_attack/LaSOT/siamfcpp_googlenet')
-        eval_lasot()
+        gt_str, fgt_str = eval_lasot()
     elif dataset_name == 'GOT-10k_Val':
-        save_name = 'train_set={}_{}_cls={}_ctr={}_reg={}_l2_z={}_l2_x={}_lr_z={}_lr_x={}'.format(
-            args.trainset, args.optimize_mode, args.cls_weight, args.ctr_weight, args.reg_weight,
-            args.l2_z_weight, args.l2_x_weight, args.lr_z, args.lr_x)
-        result_root = os.path.join(
-            root,
-            'video_analyst/snapshots/{}/'
-            'result/GOT-10k/{}/{}'.format(save_name, backbone_name, loop_num))
         dataset = GOT10k(os.path.join(root, 'video_analyst/datasets/GOT-10k'), subset='val', return_meta=True)
-        experimentGOT10k = ExperimentGOT10k(os.path.join(root, 'video_analyst/datasets/GOT-10k'), subset='val')
-        FGT_root = os.path.join(root, 'patch_anno', dataset_name)
-        eval_got10k_val()
+        experimentGOT10k = ExperimentGOT10k(os.path.join(root, 'video_analyst/datasets/GOT-10k'), subset='val', result_dir=result_root, phase='eval', report_dir=report_root)
+        gt_str, fgt_str = eval_got10k_val()
     else:
         assert False, dataset_name
+
+    """评估结果展示与保存"""
+    save_path = os.path.join(report_root, 'report.txt')
+    report_str = gt_str + '\n' + fgt_str
+    with open(save_path, 'w') as f:
+        f.write(report_str)
+    print(report_str)
+    print(save_path)
+    """评估结果展示与保存"""

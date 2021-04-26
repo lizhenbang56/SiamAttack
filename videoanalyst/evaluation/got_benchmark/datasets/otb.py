@@ -69,7 +69,7 @@ class OTB(object):
         'tb100': __tb100_seqs
     }
 
-    def __init__(self, root_dir, version=2015, download=True, FGT=False):
+    def __init__(self, root_dir, version=2015, download=True, FGT=False, fgt_dir=None):
         super(OTB, self).__init__()
         assert version in self.__version_dict
 
@@ -103,9 +103,7 @@ class OTB(object):
             self.anno_files = sorted(
                 list(
                     chain.from_iterable(
-                        glob.glob(os.path.join(
-                            '/home/etvuz/projects/adversarial_attack/patch_anno/OTB_{}'.format(version),
-                            '{}.txt'.format(s)))
+                        glob.glob(os.path.join(fgt_dir, '{}.txt'.format(s)))
                         for s in valid_seqs)))
         """START：读入真正标签或虚假标签"""
 

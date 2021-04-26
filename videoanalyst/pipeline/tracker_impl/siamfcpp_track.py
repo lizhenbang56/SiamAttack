@@ -7,7 +7,7 @@ import numpy as np
 import torch
 
 from videoanalyst.pipeline.pipeline_base import TRACK_PIPELINES, PipelineBase
-from videoanalyst.pipeline.utils import (cxywh2xywh, get_crop,
+from videoanalyst.pipeline.utils import (cxywh2xywh, get_crop, xyxy2xywh,
                                          get_subwindow_tracking,
                                          imarray_to_tensor, tensor_to_numpy,
                                          xywh2cxywh, xyxy2cxywh, xyxy2xywh)
@@ -30,6 +30,21 @@ def _point_from_original_img_to_search_img(point_in_original_img,
 
     x = _coordinate_from_orginal_img_to_search_img(point_in_original_img[0], target_pos[0])
     y = _coordinate_from_orginal_img_to_search_img(point_in_original_img[1], target_pos[1])
+    return (x, y)
+
+def _point_from_search_img_to_orginal_img(point_in_search_img,
+                                           target_pos,
+                                           scale_x, x_size):
+    """
+    point_in_search_img: 搜索图像中的一个点
+    target_pos: 以该点为中心裁剪搜索图像。
+    """
+
+    def _coordinate_from_search_img_to_orginal_img(a, b):
+        return a / scale_x + b - (x_size // 2) / scale_x
+
+    x = _coordinate_from_search_img_to_orginal_img(point_in_search_img[0], target_pos[0])
+    y = _coordinate_from_search_img_to_orginal_img(point_in_search_img[1], target_pos[1])
     return (x, y)
 
 
@@ -296,6 +311,11 @@ class SiamFCppTracker(PipelineBase):
             if y2 >= search_img_h:
                 y2 = search_img_h - 1
                 y1 = y2 - h
+
+            # 保存 FGT 在搜索图像的位置
+            fgt_x1_ori, fgt_y1_ori = _point_from_search_img_to_orginal_img([x1, y1], target_pos, scale_x, x_size)
+            fgt_x2_ori, fgt_y2_ori = _point_from_search_img_to_orginal_img([x1+w, y1+h], target_pos, scale_x, x_size)
+            self._state['fgt_xyxy_ori'] = [fgt_x1_ori, fgt_y1_ori, fgt_x2_ori, fgt_y2_ori]
             """START：得到补丁相对于搜索图像的位置"""
 
         """START：在搜索图像添加对抗补丁（不进行缩放）"""
@@ -398,7 +418,7 @@ class SiamFCppTracker(PipelineBase):
                                                axis=-1))
         if self._hyper_params["corr_fea_output"]:
             return target_pos, target_sz, self._state["corr_fea"]
-        return track_rect
+        return track_rect, xyxy2xywh(self._state["fgt_xyxy_ori"])
 
     # ======== tracking processes ======== #
 

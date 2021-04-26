@@ -31,11 +31,21 @@ class ExperimentLaSOT(ExperimentOTB):
                  subset='test',
                  return_meta=False,
                  result_dir='results',
-                 report_dir='reports'):
+                 report_dir='reports',
+                 fgt_dir=None,
+                 phase='test'):
         # assert subset.upper() in ['TRAIN', 'TEST']
         self.dataset = LaSOT(root_dir, subset, return_meta=return_meta)
-        self.result_dir = os.path.join(result_dir)
-        self.report_dir = os.path.join(report_dir)
+
+        """设置文件夹"""
+        if phase == 'eval':
+            self.result_dir = result_dir
+            self.report_dir = report_dir
+            self.fgt_dir = fgt_dir
+        else:
+            self.result_dir = os.path.join(result_dir, 'LaSOT')
+            self.report_dir = os.path.join(report_dir, 'LaSOT')
+            self.fgt_dir = os.path.join(fgt_dir, 'LaSOT')
 
         # as nbins_iou increases, the success score
         # converges to the average overlap (AO)
@@ -47,7 +57,7 @@ class ExperimentLaSOT(ExperimentOTB):
         assert isinstance(tracker_names, (list, tuple))
 
         # assume tracker_names[0] is your tracker
-        report_dir = os.path.join(self.report_dir, tracker_names[0])
+        report_dir = os.path.join(self.report_dir)
         if not os.path.isdir(report_dir):
             os.makedirs(report_dir)
         report_file = os.path.join(report_dir, 'performance.json')
@@ -181,7 +191,7 @@ class ExperimentLaSOT(ExperimentOTB):
 
     def plot_curves(self, tracker_names, extension='.png'):
         # assume tracker_names[0] is your tracker
-        report_dir = os.path.join(self.report_dir, tracker_names[0])
+        report_dir = os.path.join(self.report_dir)
         assert os.path.exists(report_dir), \
             'No reports found. Run "report" first' \
             'before plotting curves.'
