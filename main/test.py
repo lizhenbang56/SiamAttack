@@ -23,8 +23,8 @@ def make_parser():
     parser.add_argument('--do_attack', type=str, default='true')
     parser.add_argument('--trainset', default='fulldata', type=str)
     parser.add_argument('--optimize_mode', default='FGSM', type=str)
-    parser.add_argument('--cls_weight', type=float, default=1.0)
-    parser.add_argument('--ctr_weight', type=float, default=1.0)
+    parser.add_argument('--cls_weight', type=float, default=0.0)
+    parser.add_argument('--ctr_weight', type=float, default=0.0)
     parser.add_argument('--reg_weight', type=float, default=1.0)
     parser.add_argument('--l2_z_weight', default=0.005, type=float)
     parser.add_argument('--l2_x_weight', default=0.00001, type=float)
@@ -108,6 +108,16 @@ if __name__ == '__main__':
         else:
             assert False, parsed_args.do_attack
         tester._pipeline.dataset_name = parsed_args.dataset_name
-        tester._pipeline.save_name = str(parsed_args.patch_size)
+
+        if parsed_args.cls_weight == 1.0 and parsed_args.ctr_weight == 1.0 and parsed_args.reg_weight == 1.0:
+            tester._pipeline.save_name = str(parsed_args.patch_size)
+        elif parsed_args.cls_weight == 1.0 and parsed_args.ctr_weight == 0.0 and parsed_args.reg_weight == 0.0:
+            tester._pipeline.save_name = str(parsed_args.patch_size) + '_ctr100'
+        elif parsed_args.cls_weight == 0.0 and parsed_args.ctr_weight == 1.0 and parsed_args.reg_weight == 0.0:
+            tester._pipeline.save_name = str(parsed_args.patch_size) + '_ctr010'
+        elif parsed_args.cls_weight == 0.0 and parsed_args.ctr_weight == 0.0 and parsed_args.reg_weight == 1.0:
+            tester._pipeline.save_name = str(parsed_args.patch_size) + '_ctr001'
+        else:
+            assert False, parsed_args
         tester._pipeline.load_attack()
         tester.test()

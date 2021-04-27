@@ -18,7 +18,10 @@ def parse_args():
     parser.add_argument('--dataset_name', type=str, default='GOT-10k_Val')  # 'OTB_2015' 'LaSOT' 'GOT-10k_Val'
     parser.add_argument('--loop_num', type=int, default=2048)
     parser.add_argument('--backbone_name', type=str, default='googlenet')
-    parser.add_argument('--tracker_name', type=str, default='32')
+    parser.add_argument('--tracker_name', type=str, default='64')
+    parser.add_argument('--cls_weight', type=float, default=0.0)
+    parser.add_argument('--ctr_weight', type=float, default=1.0)
+    parser.add_argument('--reg_weight', type=float, default=0.0)
     return parser.parse_args()
 
 
@@ -135,9 +138,22 @@ if __name__ == '__main__':
 
     """设置文件夹路径"""
     root = '/home/etvuz/projects/adversarial_attack'
-    result_root = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/{}/result/{}/{}/{}'.format(args.tracker_name, args.dataset_name, args.backbone_name, args.loop_num))
-    report_root = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/{}/report/{}/{}/{}'.format(args.tracker_name, args.dataset_name, args.backbone_name, args.loop_num))
-    FGT_root = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/{}/FGT/{}/{}/{}'.format(args.tracker_name, args.dataset_name, args.backbone_name, args.loop_num))
+
+    """设定保存路径"""
+    if args.cls_weight == 1.0 and args.ctr_weight == 1.0 and args.reg_weight == 1.0:
+        tracker_name = str(args.tracker_name)
+    elif args.cls_weight == 1.0 and args.ctr_weight == 0.0 and args.reg_weight == 0.0:
+        tracker_name = str(args.tracker_name) + '_ctr100'
+    elif args.cls_weight == 0.0 and args.ctr_weight == 1.0 and args.reg_weight == 0.0:
+        tracker_name = str(args.tracker_name) + '_ctr010'
+    elif args.cls_weight == 0.0 and args.ctr_weight == 0.0 and args.reg_weight == 1.0:
+        tracker_name = str(args.tracker_name) + '_ctr001'
+    else:
+        assert False, args
+
+    result_root = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/{}/result/{}/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name, args.loop_num))
+    report_root = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/{}/report/{}/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name, args.loop_num))
+    FGT_root = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/{}/FGT/{}/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name, args.loop_num))
     """设置文件夹路径"""    
     
     if dataset_name == 'OTB_2015':
