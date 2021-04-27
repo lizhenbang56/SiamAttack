@@ -113,8 +113,8 @@ class PipelineTracker(object):
             start_time = time.time()
 
             """START：定义可视化文件夹"""
-            if f < 5 or f % 10 == 0:
-                visualize_flag = False
+            if f < 5 or f % 5 == 0:
+                visualize_flag = True
             else:
                 visualize_flag = False
             if visualize_flag:
@@ -149,6 +149,15 @@ class PipelineTracker(object):
                     visualize_search_img(self.pipeline._state['x_crop'],
                                          self.pipeline._state['best_box_xyxy_in_search_img'],
                                          vis_save_dir, f + 1, 'clean_search_img')
+                    visualize_search_img(self.pipeline._state['adv_search_img'],
+                                         self.pipeline._state['best_box_xyxy_in_search_img'],
+                                         vis_save_dir, f+1, 'adv_search_img_gt', self.pipeline._state['gt_xyxy'])
+                    visualize_search_img(self.pipeline._state['adv_search_img'],
+                                         self.pipeline._state['best_box_xyxy_in_search_img'],
+                                         vis_save_dir, f+1, 'adv_search_img_fgt', self.pipeline._state['fgt_xyxy_search'])
+                    visualize_search_img(self.pipeline._state['adv_search_img'],
+                                         self.pipeline._state['best_box_xyxy_in_search_img'],
+                                         vis_save_dir, f+1, 'adv_search_img_pred', self.pipeline._state['gt_xyxy'])
                     visualize_search_img(self.pipeline._state['adv_search_img'],
                                          self.pipeline._state['best_box_xyxy_in_search_img'],
                                          vis_save_dir, f+1, 'adv_search_img', self.pipeline._state['gt_xyxy'])

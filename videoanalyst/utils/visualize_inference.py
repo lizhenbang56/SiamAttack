@@ -21,10 +21,16 @@ def visualize_search_img(adv_search_img, best_box_xyxy_in_search_img, save_root,
     adv_search_img = np.clip(adv_search_img, 0, 255).astype(np.uint8)
     x1, y1, x2, y2 = [int(var) for var in best_box_xyxy_in_search_img]
     assert adv_search_img.flags['C_CONTIGUOUS']
-    adv_search_img = cv2.rectangle(adv_search_img, (x1, y1), (x2, y2), (0, 255, 0), thickness=2)
-    if gt_xyxy is not None:
+    if name in ['clean_search_img', 'adv_search_img']:
+        pass
+    elif name =='adv_search_img_pred':
+        adv_search_img = cv2.rectangle(adv_search_img, (x1, y1), (x2, y2), (0, 255, 0), thickness=2)
+    elif name == 'adv_search_img_gt':
         gt_x1, gt_y1, gt_x2, gt_y2 = [int(var) for var in gt_xyxy]
-        adv_search_img = cv2.rectangle(adv_search_img, (gt_x1, gt_y1), (gt_x2, gt_y2), (0, 0, 255), thickness=2)
+        adv_search_img = cv2.rectangle(adv_search_img, (gt_x1, gt_y1), (gt_x2, gt_y2), (0, 0, 255), thickness=2)  # 红
+    elif name == 'adv_search_img_fgt':
+        gt_x1, gt_y1, gt_x2, gt_y2 = [int(var) for var in gt_xyxy]
+        adv_search_img = cv2.rectangle(adv_search_img, (gt_x1, gt_y1), (gt_x2, gt_y2), (0, 255, 255), thickness=2)  # 黄
     save_path = os.path.join(save_root, '{}_{}.jpg'.format(idx, name))
     print(save_path)
     assert cv2.imwrite(save_path, adv_search_img)

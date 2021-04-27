@@ -316,6 +316,7 @@ class SiamFCppTracker(PipelineBase):
             fgt_x1_ori, fgt_y1_ori = _point_from_search_img_to_orginal_img([x1, y1], target_pos, scale_x, x_size)
             fgt_x2_ori, fgt_y2_ori = _point_from_search_img_to_orginal_img([x1+w, y1+h], target_pos, scale_x, x_size)
             self._state['fgt_xyxy_ori'] = [fgt_x1_ori, fgt_y1_ori, fgt_x2_ori, fgt_y2_ori]
+            self._state['fgt_xyxy_search'] = [x1, y1, x1+w, y1+h]
             """START：得到补丁相对于搜索图像的位置"""
 
         """START：在搜索图像添加对抗补丁（不进行缩放）"""

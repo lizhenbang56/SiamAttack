@@ -23,8 +23,8 @@ def make_parser():
     parser.add_argument('--do_attack', type=str, default='true')
     parser.add_argument('--trainset', default='fulldata', type=str)
     parser.add_argument('--optimize_mode', default='FGSM', type=str)
-    parser.add_argument('--cls_weight', type=float, default=0.0)
-    parser.add_argument('--ctr_weight', type=float, default=0.0)
+    parser.add_argument('--cls_weight', type=float, default=1.0)
+    parser.add_argument('--ctr_weight', type=float, default=1.0)
     parser.add_argument('--reg_weight', type=float, default=1.0)
     parser.add_argument('--l2_z_weight', default=0.005, type=float)
     parser.add_argument('--l2_x_weight', default=0.00001, type=float)
@@ -32,7 +32,7 @@ def make_parser():
     parser.add_argument('--lr_x', default=0.5, type=float)
     parser.add_argument('--gpu_id', default='2', type=str)
     parser.add_argument('--patch_size', type=int, default=64)
-    parser.add_argument('--backbone', type=str, default='alexnet')  # 'alexnet' 'shufflenetv2x1_0'
+    parser.add_argument('--backbone', type=str, default='googlenet')  # 'alexnet' 'shufflenetv2x1_0'
     return parser
 
 
