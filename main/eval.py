@@ -5,7 +5,9 @@ import ast
 import glob
 import argparse
 import numpy as np
-
+import xlsxwriter
+from natsort import natsorted # pip install natsort
+from main.visualize_uap import vis_uap
 from videoanalyst.evaluation.got_benchmark.utils.metrics import rect_iou
 from videoanalyst.evaluation.got_benchmark.datasets import GOT10k
 from videoanalyst.evaluation.got_benchmark.experiments.got10k import ExperimentGOT10k
@@ -16,16 +18,16 @@ from videoanalyst.evaluation.got_benchmark.experiments.lasot import ExperimentLa
 def parse_args():
     parser = argparse.ArgumentParser(description='Eval')
     parser.add_argument('--dataset_name', type=str, default='GOT-10k_Val')  # 'OTB_2015' 'LaSOT' 'GOT-10k_Val'
-    parser.add_argument('--loop_num', type=int, default=2048)
-    parser.add_argument('--backbone_name', type=str, default='googlenet')
+    parser.add_argument('--loop_num', type=int, default=8192)
+    parser.add_argument('--backbone_name', type=str, default='siamfcpp_googlenet')
     parser.add_argument('--tracker_name', type=str, default='64')
-    parser.add_argument('--cls_weight', type=float, default=0.0)
+    parser.add_argument('--cls_weight', type=float, default=1.0)
     parser.add_argument('--ctr_weight', type=float, default=1.0)
-    parser.add_argument('--reg_weight', type=float, default=0.0)
+    parser.add_argument('--reg_weight', type=float, default=1.0)
     return parser.parse_args()
 
 
-def eval_got10k_val():
+def eval_got10k_val(FGT_root, dataset, experimentGOT10k, result_root):
     """"""
     fgt_paths = sorted(glob.glob(os.path.join(FGT_root, "*.txt")))
     pred_paths = sorted(glob.glob(os.path.join(result_root, '*/*_001.txt')))
@@ -74,10 +76,10 @@ def eval_got10k_val():
     
     fgt_str = 'FGT AO={:.3f} SR50={:.3f}'.format(fgt_ao, fgt_sr_50)
     gt_str = 'GT AO={:.3f} SR50={:.3f}'.format(gt_ao, gt_sr_50)
-    return gt_str, fgt_str
+    return gt_ao, gt_sr_50, fgt_ao, fgt_sr_50
 
 
-def eval_otb_2015(false_ground_truth):
+def eval_otb_2015(false_ground_truth, FGT_root, result_root, report_root):
     experiment = ExperimentOTB('/home/etvuz/projects/adversarial_attack/video_analyst/datasets/OTB/OTB2015',
                                version=2015,
                                result_dir=result_root,
@@ -95,7 +97,7 @@ def eval_otb_2015(false_ground_truth):
     return print_str
  
 
-def eval_lasot():
+def eval_lasot(FGT_root, result_root, report_root):
     experiment = ExperimentLaSOT('/home/etvuz/projects/adversarial_attack/video_analyst/datasets/LaSOT',
                                  subset='test',
                                  return_meta=False,
@@ -129,15 +131,11 @@ def eval_lasot():
     return gt_str, fgt_str
 
 
-if __name__ == '__main__':
-    args = parse_args()
+def main():
     dataset_name = args.dataset_name
     loop_num = args.loop_num
     args.backbone_name = 'siamfcpp_' + args.backbone_name
     backbone_name = args.backbone_name
-
-    """设置文件夹路径"""
-    root = '/home/etvuz/projects/adversarial_attack'
 
     """设定保存路径"""
     if args.cls_weight == 1.0 and args.ctr_weight == 1.0 and args.reg_weight == 1.0:
@@ -178,3 +176,70 @@ if __name__ == '__main__':
     print(report_str)
     print(save_path)
     """评估结果展示与保存"""
+
+def eval_all():
+    """创建excel 表格"""
+    workbook = xlsxwriter.Workbook('iter.xlsx')
+    worksheet = workbook.add_worksheet('iter')
+    row = 0
+    col = 0
+    name = ['iter num', 'FGT-AO', 'FGT-SR-50', 'GT-AO', 'GT-SR-50', 'SSIM-z', 'SSIM-x']
+    worksheet.write_column(row, col, name)
+    col += 1
+    """创建excel 表格"""
+
+    result_base = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/{}/result/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name))
+    loop_nums = os.listdir(result_base)
+    """仅对特定参数执行iter遍历"""
+    assert args.dataset_name =='GOT-10k_Val' and args.ctr_weight == 1.0 and args.ctr_weight == 1.0 and args.reg_weight == 1.0 and args.tracker_name == '64' and args.backbone_name == 'siamfcpp_googlenet'
+    """仅对特定参数执行iter遍历"""
+
+    """循环每个 iter_num"""
+    loop_nums = natsorted(loop_nums)
+    for loop_num_str in loop_nums:
+        try:
+            loop_num = int(loop_num_str)
+        except Exception:
+            continue
+        if loop_num & (loop_num - 1) != 0:
+            continue
+        if loop_num > 8192:
+            break
+        
+        """设置文件夹路径"""
+        dataset_name = args.dataset_name
+        result_root = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/{}/result/{}/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name, loop_num_str))
+        report_root = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/{}/report/{}/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name, loop_num_str))
+        FGT_root = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/{}/FGT/{}/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name, loop_num_str))
+        """设置文件夹路径"""
+
+        if dataset_name == 'OTB_2015':
+            fgt_str = eval_otb_2015(false_ground_truth=True, FGT_root=FGT_root, result_root=result_root, report_root=report_root)
+            gt_str = eval_otb_2015(false_ground_truth=False, FGT_root=FGT_root, result_root=result_root, report_root=report_root)
+        elif dataset_name == 'LaSOT':
+            gt_str, fgt_str = eval_lasot(FGT_root=FGT_root, result_root=result_root, report_root=report_root)
+        elif dataset_name == 'GOT-10k_Val':
+            dataset = GOT10k(os.path.join(root, 'video_analyst/datasets/GOT-10k'), subset='val', return_meta=True)
+            experimentGOT10k = ExperimentGOT10k(os.path.join(root, 'video_analyst/datasets/GOT-10k'), subset='val', result_dir=result_root, phase='eval', report_dir=report_root)
+            gt_ao, gt_sr_50, fgt_ao, fgt_sr_50 = eval_got10k_val(FGT_root=FGT_root, dataset=dataset, experimentGOT10k=experimentGOT10k, result_root=result_root)
+        else:
+            assert False, dataset_name
+
+        """计算 SSIM"""
+        ssim_z, ssim_x = vis_uap('/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_imperceptible_patch/{}'.format(tracker_name), loop_num)
+
+        """评估结果展示与保存"""
+        # name = ['iter num', 'FGT-AO', 'FGT-SR-50', 'GT-AO', 'GT-SR-50', 'SSIM-z', 'SSIM-x']
+        value = [loop_num, fgt_ao, fgt_sr_50, gt_ao, gt_sr_50, ssim_z, ssim_x]
+        worksheet.write_column(row, col, value)
+        col += 1
+        """评估结果展示与保存"""
+    """循环每个 iter_num"""
+    workbook.close()
+
+
+if __name__ == '__main__':
+    root = '/home/etvuz/projects/adversarial_attack'
+    args = parse_args()
+    tracker_name = str(args.tracker_name)
+    eval_all()
