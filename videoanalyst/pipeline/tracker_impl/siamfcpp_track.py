@@ -323,7 +323,14 @@ class SiamFCppTracker(PipelineBase):
         data = imarray_to_tensor(im_x_crop).to(self.device)  # [1,3,h,w]
         if self.do_attack:
             try:
-                data[0, :, y1:y1+h, x1:x1+w] += self.patch_x.to(self.device)[0]  # 添加而不是粘贴
+                if self.phase == 'OURS':
+                    data[0, :, y1:y1+h, x1:x1+w] += self.patch_x.to(self.device)[0]  # 添加而不是粘贴
+                elif self.phase == 'AP':
+                    data[0, :, y1:y1+h, x1:x1+w] = self.patch_x.to(self.device)[0]
+                elif self.phase == 'UAP':
+                    data += self.patch_x.to(self.device)[0]
+                else:
+                    assert False, self.phase
             except Exception:
                 print('bad prediction')
         """END：在搜索图像添加对抗补丁（不进行缩放）"""

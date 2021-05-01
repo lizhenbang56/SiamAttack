@@ -9,7 +9,7 @@ from videoanalyst.utils import merge_cfg_into_hps
 from .target_base import TASK_TARGETS, TargetBase
 
 
-def build(task: str, cfg: CfgNode, patch_size: int = 0) -> TargetBase:
+def build(task: str, cfg: CfgNode, patch_size: int = 0, phase='OURS') -> TargetBase:
     r"""
     Arguments
     ---------
@@ -22,7 +22,7 @@ def build(task: str, cfg: CfgNode, patch_size: int = 0) -> TargetBase:
     MODULES = TASK_TARGETS[task]
 
     name = cfg.name
-    module = MODULES[name](patch_size=patch_size)
+    module = MODULES[name](patch_size=patch_size, phase=phase)
     hps = module.get_hps()
     hps = merge_cfg_into_hps(cfg[name], hps)
     module.set_hps(hps)

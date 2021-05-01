@@ -13,7 +13,7 @@ from ..transformer.builder import build as build_transformer
 from .datapipeline_base import TASK_DATAPIPELINES, DatapipelineBase
 
 
-def build(task: str, cfg: CfgNode, seed: int = 0, patch_size: int = 0) -> DatapipelineBase:
+def build(task: str, cfg: CfgNode, seed: int = 0, patch_size: int = 0, phase='OURS') -> DatapipelineBase:
     r"""
     Arguments
     ---------
@@ -29,7 +29,7 @@ def build(task: str, cfg: CfgNode, seed: int = 0, patch_size: int = 0) -> Datapi
 
     sampler = build_sampler(task, cfg.sampler, seed=seed)
     transformers = build_transformer(task, cfg.transformer, seed=seed)
-    target = build_target(task, cfg.target, patch_size=patch_size)
+    target = build_target(task, cfg.target, patch_size=patch_size, phase=phase)
 
     pipeline = []
     pipeline.extend(transformers)

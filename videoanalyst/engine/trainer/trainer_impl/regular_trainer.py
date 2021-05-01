@@ -88,25 +88,35 @@ class RegularTrainer(TrainerBase):
         self.cls_weight = params['cls_weight']
         self.ctr_weight = params['ctr_weight']
         self.reg_weight = params['reg_weight']
-        self.l2_z_weight = 0.005  # 希望模板图像 z 的扰动小，因此权重应该大。
-        self.l2_x_weight = 0.005  # 搜索图像的l2权重同样要大。因为希望x扰动小。
-        self.lr_z = 0.1
-        self.lr_x = 0.1  # 修改成和z一样
-        self.optimize_mode = 'FGSM'
         
+        # 设定模板图像损失权重与学习率
+        self.l2_z_weight = 0.005  # 希望模板图像 z 的扰动小，因此权重应该大。
+        self.lr_z = 0.1
+
+        # 设定搜索图像损失权重与学习率
+        if params['phase'] == 'AP':
+            self.l2_x_weight = 0.00001  # 不用约束搜索补丁的值
+            self.lr_x = 0.5
+        else:
+            self.l2_x_weight = 0.005  # 搜索图像的l2权重同样要大。因为希望x扰动小。
+            self.lr_x = 0.1  # 修改成和z一样
+        self.optimize_mode = 'FGSM'
         """END：设定参数"""
 
         """设定保存路径"""
-        if self.cls_weight == 1.0 and self.ctr_weight == 1.0 and self.reg_weight == 1.0:
-            self.save_name = str(params['patch_size'])
-        elif self.cls_weight == 1.0 and self.ctr_weight == 0.0 and self.reg_weight == 0.0:
-            self.save_name = str(params['patch_size']) + '_ctr100'
-        elif self.cls_weight == 0.0 and self.ctr_weight == 1.0 and self.reg_weight == 0.0:
-            self.save_name = str(params['patch_size']) + '_ctr010'
-        elif self.cls_weight == 0.0 and self.ctr_weight == 0.0 and self.reg_weight == 1.0:
-            self.save_name = str(params['patch_size']) + '_ctr001'
+        if params['phase'] == 'OURS':
+            if self.cls_weight == 1.0 and self.ctr_weight == 1.0 and self.reg_weight == 1.0:
+                self.save_name = str(params['patch_size'])
+            elif self.cls_weight == 1.0 and self.ctr_weight == 0.0 and self.reg_weight == 0.0:
+                self.save_name = str(params['patch_size']) + '_ctr100'
+            elif self.cls_weight == 0.0 and self.ctr_weight == 1.0 and self.reg_weight == 0.0:
+                self.save_name = str(params['patch_size']) + '_ctr010'
+            elif self.cls_weight == 0.0 and self.ctr_weight == 0.0 and self.reg_weight == 1.0:
+                self.save_name = str(params['patch_size']) + '_ctr001'
+            else:
+                assert False, self
         else:
-            assert False, self
+            self.save_name = params['phase']
         """设定保存路径"""
 
         """START：设置保存路径"""
@@ -179,7 +189,14 @@ class RegularTrainer(TrainerBase):
                 for idx, xyxy in enumerate(training_data['bbox_x']):
                     x1, y1, x2, y2 = [int(var) for var in xyxy]  # 补丁在搜索图像上的位置
                     try:
-                        training_data['im_x'][idx, :, y1:y2+1, x1:x2+1] += patch_x[0]  # 不缩放补丁，相加操作，希望不可感知
+                        if params['phase'] == 'Ours':
+                            training_data['im_x'][idx, :, y1:y2+1, x1:x2+1] += patch_x[0]  # 不缩放补丁，相加操作，希望不可感知
+                        elif params['phase'] == 'AP':
+                            training_data['im_x'][idx, :, y1:y2+1, x1:x2+1] = patch_x[0]
+                        elif params['phase'] == 'UAP':
+                            training_data['im_x'][idx] += patch_x[0]
+                        else:
+                            assert False, params['phase']
                     except Exception as e:
                         print("Error paste patch", str(e))
                         continue
@@ -235,7 +252,10 @@ class RegularTrainer(TrainerBase):
 
                     """START：根据梯度得到新的扰动"""
                     patch_x = fgsm_attack(patch_x, patch_grad, self.lr_x)
-                    uap_z = fgsm_attack(uap_z, im_z_grad, self.lr_z)
+                    if params['phase'] == 'AP':
+                        uap_z = fgsm_attack(uap_z, im_z_grad, 0)
+                    else:
+                        uap_z = fgsm_attack(uap_z, im_z_grad, self.lr_z)
                     patch_x = patch_x.detach()
                     uap_z = uap_z.detach()
                     """END：根据梯度得到新的扰动"""

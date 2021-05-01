@@ -25,9 +25,10 @@ class DenseboxTarget(TargetBase):
         num_conv3x3=3,
     )
 
-    def __init__(self, patch_size=0) -> None:
+    def __init__(self, patch_size=0, phase='OURS') -> None:
         super().__init__()
         self.patch_size = patch_size
+        self.phase = phase
 
     def update_params(self):
         hps = self._hyper_params
@@ -49,8 +50,12 @@ class DenseboxTarget(TargetBase):
 
         """START：随机补丁的位置"""
         # 希望补丁的中心点以搜索图像中心点为中心，均匀偏移±64像素。
-        fake_gt_cx = self._hyper_params['x_size'] / 2 + random.uniform(-64, 64)
-        fake_gt_cy = self._hyper_params['x_size'] / 2 + random.uniform(-64, 64)
+        if self.phase != 'UAP':
+            fake_gt_cx = self._hyper_params['x_size'] / 2 + random.uniform(-64, 64)
+            fake_gt_cy = self._hyper_params['x_size'] / 2 + random.uniform(-64, 64)
+        else:
+            fake_gt_cx = self._hyper_params['x_size'] / 2 - 64
+            fake_gt_cy = self._hyper_params['x_size'] / 2 - 64
         """END：随机补丁的位置"""
 
         fake_gt_cxywh_in_search_img = [fake_gt_cx, fake_gt_cy, fake_gt_w, fake_gt_h]

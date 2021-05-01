@@ -18,9 +18,9 @@ from videoanalyst.evaluation.got_benchmark.experiments.lasot import ExperimentLa
 def parse_args():
     parser = argparse.ArgumentParser(description='Eval')
     parser.add_argument('--dataset_name', type=str, default='GOT-10k_Val')  # 'OTB_2015' 'LaSOT' 'GOT-10k_Val'
-    parser.add_argument('--loop_num', type=int, default=8192)
+    parser.add_argument('--loop_num', type=int, default=2048)
     parser.add_argument('--backbone_name', type=str, default='siamfcpp_googlenet')
-    parser.add_argument('--tracker_name', type=str, default='64')
+    parser.add_argument('--tracker_name', type=str, default='UAP')
     parser.add_argument('--cls_weight', type=float, default=1.0)
     parser.add_argument('--ctr_weight', type=float, default=1.0)
     parser.add_argument('--reg_weight', type=float, default=1.0)
@@ -179,7 +179,11 @@ def main():
 
 def eval_all():
     """创建excel 表格"""
-    workbook = xlsxwriter.Workbook('iter.xlsx')
+    report_base = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/{}/report/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name))
+    if not os.path.exists(report_base):
+        os.makedirs(report_base)
+    workbook = xlsxwriter.Workbook(os.path.join(report_base, 'iter.xlsx'))
+    print('excel路径', os.path.join(report_base, 'iter.xlsx'))
     worksheet = workbook.add_worksheet('iter')
     row = 0
     col = 0
@@ -191,7 +195,7 @@ def eval_all():
     result_base = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/{}/result/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name))
     loop_nums = os.listdir(result_base)
     """仅对特定参数执行iter遍历"""
-    assert args.dataset_name =='GOT-10k_Val' and args.ctr_weight == 1.0 and args.ctr_weight == 1.0 and args.reg_weight == 1.0 and args.tracker_name == '64' and args.backbone_name == 'siamfcpp_googlenet'
+    assert args.dataset_name =='GOT-10k_Val' and args.ctr_weight == 1.0 and args.ctr_weight == 1.0 and args.reg_weight == 1.0 and args.tracker_name in ['64', 'AP', 'UAP'] and args.backbone_name == 'siamfcpp_googlenet'
     """仅对特定参数执行iter遍历"""
 
     """循环每个 iter_num"""
@@ -210,6 +214,9 @@ def eval_all():
         dataset_name = args.dataset_name
         result_root = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/{}/result/{}/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name, loop_num_str))
         report_root = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/{}/report/{}/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name, loop_num_str))
+        if not os.path.exists(report_root):
+            os.makedirs(report_root)
+        print(report_root)
         FGT_root = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/{}/FGT/{}/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name, loop_num_str))
         """设置文件夹路径"""
 
@@ -226,7 +233,7 @@ def eval_all():
             assert False, dataset_name
 
         """计算 SSIM"""
-        ssim_z, ssim_x = vis_uap('/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_imperceptible_patch/{}'.format(tracker_name), loop_num)
+        ssim_z, ssim_x = vis_uap('/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_imperceptible_patch/{}'.format(tracker_name), loop_num, phase=args.tracker_name)
 
         """评估结果展示与保存"""
         # name = ['iter num', 'FGT-AO', 'FGT-SR-50', 'GT-AO', 'GT-SR-50', 'SSIM-z', 'SSIM-x']

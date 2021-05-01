@@ -27,7 +27,7 @@ class AdaptorDataset(Dataset):
             num_epochs=1,
             nr_image_per_epoch=1,
             seed: int = 0,
-            patch_size: int = 0
+            patch_size: int = 0, phase='OURS'
     ):
         self.datapipeline = None
         self.task = task
@@ -36,6 +36,7 @@ class AdaptorDataset(Dataset):
         self.nr_image_per_epoch = nr_image_per_epoch
         self.ext_seed = seed
         self.patch_size = patch_size
+        self.phase = phase
 
     def __getitem__(self, item):
         if self.datapipeline is None:
@@ -45,7 +46,7 @@ class AdaptorDataset(Dataset):
                     self.ext_seed * self._EXT_SEED_STEP) % self._SEED_DIVIDER
             self.datapipeline = datapipeline_builder.build(self.task,
                                                            self.cfg,
-                                                           seed=seed, patch_size=self.patch_size)
+                                                           seed=seed, patch_size=self.patch_size, phase=self.phase)
             logger.info("AdaptorDataset #%d built datapipeline with seed=%d" %
                         (item, seed))
 

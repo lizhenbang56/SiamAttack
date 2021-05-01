@@ -33,6 +33,7 @@ def make_parser():
     parser.add_argument('--gpu_id', default='2', type=str)
     parser.add_argument('--patch_size', type=int, default=16)
     parser.add_argument('--backbone', type=str, default='googlenet')  # 'alexnet' 'shufflenetv2x1_0'
+    parser.add_argument('--phase', type=str, default='OURS')
     return parser
 
 
@@ -101,6 +102,7 @@ if __name__ == '__main__':
         testers = build_sat_tester(task_cfg)
     for tester in testers:
         tester._pipeline.loop_num = parsed_args.loop_num
+        tester._pipeline.phase = parsed_args.phase
         if parsed_args.do_attack == 'true':
             tester._pipeline.do_attack = True
         elif parsed_args.do_attack == 'false':
@@ -109,15 +111,18 @@ if __name__ == '__main__':
             assert False, parsed_args.do_attack
         tester._pipeline.dataset_name = parsed_args.dataset_name
 
-        if parsed_args.cls_weight == 1.0 and parsed_args.ctr_weight == 1.0 and parsed_args.reg_weight == 1.0:
-            tester._pipeline.save_name = str(parsed_args.patch_size)
-        elif parsed_args.cls_weight == 1.0 and parsed_args.ctr_weight == 0.0 and parsed_args.reg_weight == 0.0:
-            tester._pipeline.save_name = str(parsed_args.patch_size) + '_ctr100'
-        elif parsed_args.cls_weight == 0.0 and parsed_args.ctr_weight == 1.0 and parsed_args.reg_weight == 0.0:
-            tester._pipeline.save_name = str(parsed_args.patch_size) + '_ctr010'
-        elif parsed_args.cls_weight == 0.0 and parsed_args.ctr_weight == 0.0 and parsed_args.reg_weight == 1.0:
-            tester._pipeline.save_name = str(parsed_args.patch_size) + '_ctr001'
+        if parsed_args.phase == 'OURS':
+            if parsed_args.cls_weight == 1.0 and parsed_args.ctr_weight == 1.0 and parsed_args.reg_weight == 1.0:
+                tester._pipeline.save_name = str(parsed_args.patch_size)
+            elif parsed_args.cls_weight == 1.0 and parsed_args.ctr_weight == 0.0 and parsed_args.reg_weight == 0.0:
+                tester._pipeline.save_name = str(parsed_args.patch_size) + '_ctr100'
+            elif parsed_args.cls_weight == 0.0 and parsed_args.ctr_weight == 1.0 and parsed_args.reg_weight == 0.0:
+                tester._pipeline.save_name = str(parsed_args.patch_size) + '_ctr010'
+            elif parsed_args.cls_weight == 0.0 and parsed_args.ctr_weight == 0.0 and parsed_args.reg_weight == 1.0:
+                tester._pipeline.save_name = str(parsed_args.patch_size) + '_ctr001'
+            else:
+                assert False, parsed_args
         else:
-            assert False, parsed_args
+            tester._pipeline.save_name = parsed_args.phase
         tester._pipeline.load_attack()
         tester.test()

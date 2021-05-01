@@ -47,7 +47,7 @@ def make_parser():
     parser.add_argument('--reg_weight', default=1.0, type=float)
     parser.add_argument('--patch_size', type=int, default=64)
     parser.add_argument('--gpu_id', type=str, default='1,2,3')
-
+    parser.add_argument('--phase', type=str, default='UAP')
     return parser
 
 
@@ -106,7 +106,7 @@ if __name__ == '__main__':
     model.set_device(devs[0])
     # load data
     with Timer(name="Dataloader building", verbose=True):
-        dataloader = dataloader_builder.build(task, task_cfg.data, patch_size=parsed_args.patch_size)
+        dataloader = dataloader_builder.build(task, task_cfg.data, patch_size=parsed_args.patch_size, phase=parsed_args.phase)
     # build optimizer
     optimizer = optim_builder.build(task, task_cfg.optim, model)
     # build trainer
@@ -118,8 +118,13 @@ if __name__ == '__main__':
 
     """START：声明通用扰动"""
     if not parsed_args.uap_resume:
-        patch_x = torch.zeros(1, 3, parsed_args.patch_size, parsed_args.patch_size)  # 因为是相加，所以初始化为0
         uap_z = torch.zeros((1, 3, 127, 127))
+        if parsed_args.phase == 'OURS':
+            patch_x = torch.zeros(1, 3, parsed_args.patch_size, parsed_args.patch_size)  # 因为是相加，所以初始化为0
+        elif parsed_args.phase == 'AP':
+            patch_x = 127 * torch.ones(1, 3, parsed_args.patch_size, parsed_args.patch_size)
+        elif parsed_args.phase == 'UAP':
+            patch_x = torch.zeros(1, 3, 303, 303)
         optimizer = torch.optim.AdamW([patch_x, uap_z], lr=0.1, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.0,
                                       amsgrad=False)
     else:
@@ -140,7 +145,8 @@ if __name__ == '__main__':
                                                       params={'cls_weight': parsed_args.cls_weight,
                                                               'ctr_weight': parsed_args.ctr_weight,
                                                               'reg_weight': parsed_args.reg_weight,
-                                                              'patch_size': parsed_args.patch_size})
+                                                              'patch_size': parsed_args.patch_size,
+                                                              'phase': parsed_args.phase})
         trainer.save_snapshot()
     # export final model
     trainer.save_snapshot(model_param_only=True)
