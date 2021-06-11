@@ -1,10 +1,10 @@
 cls_weight=1.0
 ctr_weight=1.0
 reg_weight=1.0
-patch_size=64
-phase=UAP
+patch_size=256
+phase=FFT
 
-source activate pytorch1.4_python3.7
+source activate pytorch1.8_python3.9
 export CUDA_VISIBLE_DEVICES=0,1,3
 cd /home/etvuz/projects/adversarial_attack/video_analyst
 

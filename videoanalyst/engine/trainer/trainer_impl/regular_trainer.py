@@ -195,6 +195,10 @@ class RegularTrainer(TrainerBase):
                             training_data['im_x'][idx, :, y1:y2+1, x1:x2+1] = patch_x[0]
                         elif params['phase'] == 'UAP':
                             training_data['im_x'][idx] += patch_x[0]
+                        elif params['phase'] == 'FFT':
+                            fft_img_x = torch.fft.fft2(training_data['im_x'][idx])
+                            perturbed_fft_img_x = fft_img_x + patch_x[0]
+                            training_data['im_x'][idx] = torch.fft.ifft2(perturbed_fft_img_x)
                         else:
                             assert False, params['phase']
                     except Exception as e:
@@ -205,7 +209,12 @@ class RegularTrainer(TrainerBase):
                 """END：在搜索图像添加补丁"""
 
                 """START：将扰动叠加至输入图像"""
-                training_data['im_z'] = uap_z + training_data['im_z'].data
+                if params['phase'] == 'FFT':
+                    fft_img_z = torch.fft.fft2(training_data['im_z'].data)
+                    perturbed_fft_img_z = fft_img_z + uap_z
+                    training_data['im_z'] = torch.fft.ifft2(perturbed_fft_img_z)
+                else:
+                    training_data['im_z'] = uap_z + training_data['im_z'].data
                 """END：将扰动叠加至输入图像"""
 
                 """START：网络前向传播"""
