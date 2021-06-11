@@ -30,7 +30,7 @@ def make_parser():
     parser.add_argument('--l2_x_weight', default=0.00001, type=float)
     parser.add_argument('--lr_z', default=0.1, type=float)
     parser.add_argument('--lr_x', default=0.5, type=float)
-    parser.add_argument('--gpu_id', default='2', type=str)
+    parser.add_argument('--gpu_id', default='1,5,6,7', type=str)
     parser.add_argument('--patch_size', type=int, default=16)
     parser.add_argument('--backbone', type=str, default='googlenet')  # 'alexnet' 'shufflenetv2x1_0'
     parser.add_argument('--phase', type=str, default='OURS')
@@ -79,9 +79,9 @@ if __name__ == '__main__':
         assert False, parsed_args.dataset_name
     """设置参数"""
 
-    # """设置GPU"""
-    # os.environ['CUDA_VISIBLE_DEVICES'] = parsed_args.gpu_id
-    # """设置GPU"""
+    """设置GPU"""
+    os.environ['CUDA_VISIBLE_DEVICES'] = parsed_args.gpu_id
+    """设置GPU"""
 
     # experiment config
     exp_cfg_path = osp.realpath(parsed_args.config)

@@ -1,0 +1,14 @@
+opencv-python
+loguru
+yacs
+six
+tqdm
+wget
+pycocotools
+shapely
+pandas
+scipy
+tensorboard
+xlsxwriter
+natsort
+scikit-image==0.15.0

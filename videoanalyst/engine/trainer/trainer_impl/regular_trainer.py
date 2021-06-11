@@ -121,7 +121,7 @@ class RegularTrainer(TrainerBase):
 
         """START：设置保存路径"""
         print(self.save_name)
-        save_dir = os.path.join('/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_imperceptible_patch', self.save_name)
+        save_dir = os.path.join('snapshots_imperceptible_patch', self.save_name)
         if signal_img_debug:
             save_dir = '/tmp/uap_debug'
         self.writer = SummaryWriter(save_dir)
@@ -189,16 +189,17 @@ class RegularTrainer(TrainerBase):
                 for idx, xyxy in enumerate(training_data['bbox_x']):
                     x1, y1, x2, y2 = [int(var) for var in xyxy]  # 补丁在搜索图像上的位置
                     try:
-                        if params['phase'] == 'Ours':
+                        if params['phase'] in ['Ours', 'FFT']:
                             training_data['im_x'][idx, :, y1:y2+1, x1:x2+1] += patch_x[0]  # 不缩放补丁，相加操作，希望不可感知
                         elif params['phase'] == 'AP':
                             training_data['im_x'][idx, :, y1:y2+1, x1:x2+1] = patch_x[0]
                         elif params['phase'] == 'UAP':
                             training_data['im_x'][idx] += patch_x[0]
-                        elif params['phase'] == 'FFT':
-                            fft_img_x = torch.fft.fft2(training_data['im_x'][idx])
-                            perturbed_fft_img_x = fft_img_x + patch_x[0]
-                            training_data['im_x'][idx] = torch.fft.ifft2(perturbed_fft_img_x)
+                        # elif params['phase'] == 'FFT':
+                        #     dtype = training_data['im_x'][idx]
+                        #     fft_img_x = torch.fft.fft2(training_data['im_x'][idx])
+                        #     perturbed_fft_img_x = fft_img_x + patch_x[0]
+                        #     training_data['im_x'][idx] = torch.fft.ifft2(perturbed_fft_img_x).to(dtype)
                         else:
                             assert False, params['phase']
                     except Exception as e:
@@ -210,9 +211,10 @@ class RegularTrainer(TrainerBase):
 
                 """START：将扰动叠加至输入图像"""
                 if params['phase'] == 'FFT':
+                    dtype = training_data['im_z'].data.dtype
                     fft_img_z = torch.fft.fft2(training_data['im_z'].data)
                     perturbed_fft_img_z = fft_img_z + uap_z
-                    training_data['im_z'] = torch.fft.ifft2(perturbed_fft_img_z)
+                    training_data['im_z'] = torch.fft.ifft2(perturbed_fft_img_z).to(dtype)
                 else:
                     training_data['im_z'] = uap_z + training_data['im_z'].data
                 """END：将扰动叠加至输入图像"""

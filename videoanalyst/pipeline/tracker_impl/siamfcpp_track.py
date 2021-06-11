@@ -185,7 +185,13 @@ class SiamFCppTracker(PipelineBase):
 
             """START：添加扰动"""
             if self.do_attack:
-                data += self.uap_z.to(self.device)
+                if self.phase == 'FFT':
+                    dtype = data.dtype
+                    data_fft = torch.fft.fft2(data)
+                    perturbed_data_fft = data_fft + self.uap_z.to(self.device)
+                    data = torch.fft.ifft2(perturbed_data_fft).to(dtype)
+                else:
+                    data += self.uap_z.to(self.device)
             """END：添加扰动"""
 
             """START：保存模板图像"""
@@ -199,7 +205,7 @@ class SiamFCppTracker(PipelineBase):
     def load_attack(self):
         if self.do_attack:
             """START：读入扰动"""
-            self.uap_root = '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_imperceptible_patch/{}'.format(self.save_name)
+            self.uap_root = 'snapshots_imperceptible_patch/{}'.format(self.save_name)
             patch_x_path = os.path.join(self.uap_root, 'x_{}'.format(self.loop_num))
             uap_z_path = os.path.join(self.uap_root, 'z_{}'.format(self.loop_num))
             self.patch_x = torch.load(patch_x_path, map_location='cpu')
@@ -323,7 +329,7 @@ class SiamFCppTracker(PipelineBase):
         data = imarray_to_tensor(im_x_crop).to(self.device)  # [1,3,h,w]
         if self.do_attack:
             try:
-                if self.phase == 'OURS':
+                if self.phase in ['OURS', 'FFT']:
                     data[0, :, y1:y1+h, x1:x1+w] += self.patch_x.to(self.device)[0]  # 添加而不是粘贴
                 elif self.phase == 'AP':
                     data[0, :, y1:y1+h, x1:x1+w] = self.patch_x.to(self.device)[0]
