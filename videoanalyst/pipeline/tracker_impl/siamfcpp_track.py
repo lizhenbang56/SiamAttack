@@ -187,9 +187,15 @@ class SiamFCppTracker(PipelineBase):
             if self.do_attack:
                 if self.phase == 'FFT':
                     dtype = data.dtype
-                    data_fft = torch.fft.fft2(data)
-                    perturbed_data_fft = data_fft + self.uap_z.to(self.device)
-                    data = torch.fft.ifft2(perturbed_data_fft).to(dtype)
+
+                    # # 方案1
+                    # data_fft = torch.fft.fft2(data)
+                    # perturbed_data_fft = data_fft + self.uap_z.to(self.device)
+                    # data = torch.fft.ifft2(perturbed_data_fft).to(dtype)
+
+                    # 方案2
+                    perturbed_z = torch.fft.ifft2(self.uap_z.to(self.device)).to(dtype)
+                    data += perturbed_z
                 else:
                     data += self.uap_z.to(self.device)
             """END：添加扰动"""
@@ -329,12 +335,16 @@ class SiamFCppTracker(PipelineBase):
         data = imarray_to_tensor(im_x_crop).to(self.device)  # [1,3,h,w]
         if self.do_attack:
             try:
-                if self.phase in ['OURS', 'FFT']:
+                if self.phase in ['OURS']:
                     data[0, :, y1:y1+h, x1:x1+w] += self.patch_x.to(self.device)[0]  # 添加而不是粘贴
                 elif self.phase == 'AP':
                     data[0, :, y1:y1+h, x1:x1+w] = self.patch_x.to(self.device)[0]
                 elif self.phase == 'UAP':
                     data += self.patch_x.to(self.device)[0]
+                elif self.phase == 'FFT':
+                    dtype = data.dtype
+                    perturbed_x = torch.fft.ifft2(self.patch_x.to(self.device)[0]).to(dtype)
+                    data[0, :, y1:y1+h, x1:x1+w] += perturbed_x
                 else:
                     assert False, self.phase
             except Exception:

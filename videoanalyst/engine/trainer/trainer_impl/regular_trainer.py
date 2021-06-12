@@ -13,7 +13,7 @@ from ..trainer_base import TRACK_TRAINERS, TrainerBase
 
 
 def fgsm_attack(uap, data_grad, epsilon):
-    sign_data_grad = data_grad.sign()
+    sign_data_grad = data_grad.sgn()
     new_uap = uap - epsilon*sign_data_grad
     return new_uap
 
@@ -90,16 +90,16 @@ class RegularTrainer(TrainerBase):
         self.reg_weight = params['reg_weight']
         
         # 设定模板图像损失权重与学习率
-        self.l2_z_weight = 0.005  # 希望模板图像 z 的扰动小，因此权重应该大。
-        self.lr_z = 0.1
+        self.l2_z_weight = 0.0  # 希望模板图像 z 的扰动小，因此权重应该大。
+        self.lr_z = 1.0
 
         # 设定搜索图像损失权重与学习率
         if params['phase'] == 'AP':
             self.l2_x_weight = 0.00001  # 不用约束搜索补丁的值
             self.lr_x = 0.5
         else:
-            self.l2_x_weight = 0.005  # 搜索图像的l2权重同样要大。因为希望x扰动小。
-            self.lr_x = 0.1  # 修改成和z一样
+            self.l2_x_weight = 0.0  # 搜索图像的l2权重同样要大。因为希望x扰动小。
+            self.lr_x = 1.0  # 修改成和z一样
         self.optimize_mode = 'FGSM'
         """END：设定参数"""
 
@@ -189,17 +189,23 @@ class RegularTrainer(TrainerBase):
                 for idx, xyxy in enumerate(training_data['bbox_x']):
                     x1, y1, x2, y2 = [int(var) for var in xyxy]  # 补丁在搜索图像上的位置
                     try:
-                        if params['phase'] in ['Ours', 'FFT']:
+                        if params['phase'] in ['Ours']:
                             training_data['im_x'][idx, :, y1:y2+1, x1:x2+1] += patch_x[0]  # 不缩放补丁，相加操作，希望不可感知
                         elif params['phase'] == 'AP':
                             training_data['im_x'][idx, :, y1:y2+1, x1:x2+1] = patch_x[0]
                         elif params['phase'] == 'UAP':
                             training_data['im_x'][idx] += patch_x[0]
-                        # elif params['phase'] == 'FFT':
-                        #     dtype = training_data['im_x'][idx]
-                        #     fft_img_x = torch.fft.fft2(training_data['im_x'][idx])
-                        #     perturbed_fft_img_x = fft_img_x + patch_x[0]
-                        #     training_data['im_x'][idx] = torch.fft.ifft2(perturbed_fft_img_x).to(dtype)
+                        elif params['phase'] == 'FFT':
+                            # # 方案1：图像fft后ifft，扰动直接是频域，不变。
+                            # dtype = training_data['im_x'][idx].dtype
+                            # fft_img_x = torch.fft.fft2(training_data['im_x'][idx, :, y1:y2+1, x1:x2+1])
+                            # perturbed_fft_img_x = fft_img_x + patch_x[0]
+                            # training_data['im_x'][idx, :, y1:y2+1, x1:x2+1] = torch.fft.ifft2(perturbed_fft_img_x).to(dtype)
+
+                            # 方案2：扰动是频域，ifft；图像不变。
+                            dtype = training_data['im_x'][idx].dtype
+                            perturbed_x = torch.fft.ifft2(patch_x[0]).to(dtype)
+                            training_data['im_x'][idx, :, y1:y2+1, x1:x2+1] += perturbed_x
                         else:
                             assert False, params['phase']
                     except Exception as e:
@@ -212,9 +218,15 @@ class RegularTrainer(TrainerBase):
                 """START：将扰动叠加至输入图像"""
                 if params['phase'] == 'FFT':
                     dtype = training_data['im_z'].data.dtype
-                    fft_img_z = torch.fft.fft2(training_data['im_z'].data)
-                    perturbed_fft_img_z = fft_img_z + uap_z
-                    training_data['im_z'] = torch.fft.ifft2(perturbed_fft_img_z).to(dtype)
+
+                    # # 方案1：图像fft后ifft，扰动直接是频域，不变。
+                    # fft_img_z = torch.fft.fft2(training_data['im_z'].data)
+                    # perturbed_fft_img_z = fft_img_z + uap_z
+                    # training_data['im_z'] = torch.fft.ifft2(perturbed_fft_img_z).to(dtype)
+
+                    # 方案2：扰动是频域，ifft；图像不变。
+                    perturbed_z = torch.fft.ifft2(uap_z).to(dtype)
+                    training_data['im_z'] = perturbed_z + training_data['im_z'].data
                 else:
                     training_data['im_z'] = uap_z + training_data['im_z'].data
                 """END：将扰动叠加至输入图像"""
@@ -284,17 +296,18 @@ class RegularTrainer(TrainerBase):
                 norm_z_loss=norm_z_loss.item(),
             )
 
-            for monitor in self._monitors:
-                monitor.update(trainer_data)
+            # for monitor in self._monitors:
+            #     monitor.update(trainer_data)
 
             """START：记录训练情况"""
-            self.writer.add_scalar('norm/norm_x', norm_x_loss.item(), real_iter_num)
-            self.writer.add_scalar('norm/norm_z', norm_z_loss.item(), real_iter_num)
+            # self.writer.add_scalar('norm/norm_x', norm_x_loss.item(), real_iter_num)
+            # self.writer.add_scalar('norm/norm_z', norm_z_loss.item(), real_iter_num)
             self.writer.add_scalar('loss/cls_loss', cls_loss.item(), real_iter_num)
             self.writer.add_scalar('loss/ctr_Loss', ctr_loss.item(), real_iter_num)
             self.writer.add_scalar('loss/reg_Loss', reg_loss.item(), real_iter_num)
             self.writer.add_scalar('iou', trainer_data['extras']['reg']['iou'].item(), real_iter_num)
             self.writer.flush()
+            print('cls={:.2f}, ctr={:.2f}, reg={:.2f}, iou={:.2f}'.format(cls_loss.item(), ctr_loss.item(), reg_loss.item(), trainer_data['extras']['reg']['iou'].item()))
             """END：记录训练情况"""
 
             if not signal_img_debug:

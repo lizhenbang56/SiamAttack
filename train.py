@@ -32,7 +32,7 @@ def make_parser():
     parser = argparse.ArgumentParser(description='Test')
     parser.add_argument('-cfg',
                         '--config',
-                        default='experiments/siamfcpp/train/fulldata/157.yaml',
+                        default='experiments/siamfcpp/train/fulldata/157_1gpu.yaml',
                         type=str,
                         help='path to experiment configuration')
     parser.add_argument(
@@ -47,7 +47,7 @@ def make_parser():
     parser.add_argument('--reg_weight', default=1.0, type=float)
     parser.add_argument('--patch_size', type=int, default=64)
     parser.add_argument('--gpu_id', type=str, default='1,5,6,7')
-    parser.add_argument('--phase', type=str, default='UAP')
+    parser.add_argument('--phase', type=str, default='FFT')
     return parser
 
 
@@ -118,15 +118,19 @@ if __name__ == '__main__':
 
     """START：声明通用扰动"""
     if not parsed_args.uap_resume:
-        uap_z = torch.zeros((1, 3, 127, 127))
+        uap_z = torch.zeros((1, 3, 127, 127)).to(torch.complex64)
         if parsed_args.phase in ['OURS', 'FFT']:
-            patch_x = torch.zeros(1, 3, parsed_args.patch_size, parsed_args.patch_size)  # 因为是相加，所以初始化为0
+            patch_x = torch.zeros(1, 3, parsed_args.patch_size, parsed_args.patch_size).to(torch.complex64)  # 因为是相加，所以初始化为0
         elif parsed_args.phase == 'AP':
             patch_x = 127 * torch.ones(1, 3, parsed_args.patch_size, parsed_args.patch_size)
         elif parsed_args.phase in ['UAP']:
             patch_x = torch.zeros(1, 3, 303, 303)
         optimizer = torch.optim.AdamW([patch_x, uap_z], lr=0.1, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.0,
-                                      amsgrad=False)
+                                      amsgrad=False)  # bug in pytorch1.8.1
+        
+        # uap_z.requires_grad = True
+        # patch_x.requires_grad = True
+        # optimizer = torch.optim.SGD([patch_x, uap_z], lr=0.1)
     else:
         uap_num = 4096
         uap_x_path = '/tmp/uap_v1.1/x_{}'.format(uap_num)
