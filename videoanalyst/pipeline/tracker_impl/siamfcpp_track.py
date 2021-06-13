@@ -3,9 +3,9 @@
 from copy import deepcopy
 import os
 import numpy as np
-
+import math
 import torch
-from videoanalyst.engine.trainer.trainer_impl.regular_trainer import filter
+from videoanalyst.engine.trainer.trainer_impl.regular_trainer import filter, restrict_tensor
 from videoanalyst.pipeline.pipeline_base import TRACK_PIPELINES, PipelineBase
 from videoanalyst.pipeline.utils import (cxywh2xywh, get_crop, xyxy2xywh,
                                          get_subwindow_tracking,
@@ -23,14 +23,13 @@ def normalization(x):
 
 
 def generate_gaussian(size):
-    nrows = ncols = size
-    sigmax, sigmay = 1000000, 1000000  # 高斯函数的标准差，越小越模糊。已验证。
-    cy, cx = nrows/2, ncols/2
-    x = np.linspace(0, nrows, nrows)
-    y = np.linspace(0, ncols, ncols)
-    X, Y = np.meshgrid(x, y)
-    gmask = np.exp(-(((X-cx)/sigmax)**2 + ((Y-cy)/sigmay)**2))
-    return normalization(1-gmask)
+    rate = 0.02
+    mask = np.ones((size, size))
+    x1 = y1 =  math.ceil(rate*size)
+    x2 = y2 = math.floor((1-rate)*size)
+    mask[y1:y2,x1:x2] = 0
+    print(x1, x2)
+    return mask
 
 
 def _point_from_original_img_to_search_img(point_in_original_img,
@@ -209,7 +208,7 @@ class SiamFCppTracker(PipelineBase):
                     dtype = data.dtype
                     for color_channel in range(3):
                         ifft = filter(self.uap_z[0, color_channel, :, :].to(self.device), self.filter_z.to(self.device))
-                        perturbed_z_one_channel_mask = ifft.to(dtype)
+                        perturbed_z_one_channel_mask = restrict_tensor(ifft.to(dtype))
                         data[:,color_channel, :, :] += perturbed_z_one_channel_mask.unsqueeze(0)
                 else:
                     data += self.uap_z.to(self.device)
@@ -367,7 +366,7 @@ class SiamFCppTracker(PipelineBase):
                     dtype = data.dtype
                     for color_channel in range(3):
                         ifft = filter(self.patch_x[0,color_channel,:,:].to(self.device), self.filter_x.to(self.device))
-                        perturbed_x_one_channel_mask = ifft.to(dtype)
+                        perturbed_x_one_channel_mask = restrict_tensor(ifft.to(dtype))
                         data[0, color_channel, y1:y1+h, x1:x1+w] += perturbed_x_one_channel_mask
                 else:
                     assert False, self.phase

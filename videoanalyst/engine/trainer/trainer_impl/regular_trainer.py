@@ -35,6 +35,15 @@ def filter(tensor, filter):
     return ifft
 
 
+def restrict_tensor(data, do=True):
+    if do:
+        # return 1.0 * data/(torch.max(torch.abs(data)))
+        # return data/10
+        return torch.clip(data, -20, 20)
+    else:
+        return data
+
+
 @TRACK_TRAINERS.register
 class RegularTrainer(TrainerBase):
     r"""
@@ -99,16 +108,16 @@ class RegularTrainer(TrainerBase):
         self.reg_weight = params['reg_weight']
         
         # 设定模板图像损失权重与学习率
-        self.l2_z_weight = 0.0  # 希望模板图像 z 的扰动小，因此权重应该大。
-        self.lr_z = 1.0
+        self.l2_z_weight = 0.0005  # 希望模板图像 z 的扰动小，因此权重应该大。
+        self.lr_z = 0.5
 
         # 设定搜索图像损失权重与学习率
         if params['phase'] == 'AP':
             self.l2_x_weight = 0.00001  # 不用约束搜索补丁的值
             self.lr_x = 0.5
         else:
-            self.l2_x_weight = 0.0  # 搜索图像的l2权重同样要大。因为希望x扰动小。
-            self.lr_x = 1.0  # 修改成和z一样
+            self.l2_x_weight = 0.0005  # 搜索图像的l2权重同样要大。因为希望x扰动小。
+            self.lr_x = 0.5  # 修改成和z一样
         self.optimize_mode = 'FGSM'
         """END：设定参数"""
 
@@ -210,7 +219,7 @@ class RegularTrainer(TrainerBase):
                             dtype = training_data['im_x'][idx].dtype
                             for color_channel in range(3):
                                 ifft = filter(patch_x[0,color_channel,:,:], filter_x)
-                                perturbed_x_one_channel_mask = ifft.to(dtype)
+                                perturbed_x_one_channel_mask = restrict_tensor(ifft.to(dtype))
                                 training_data['im_x'][idx, color_channel, y1:y2+1, x1:x2+1] += perturbed_x_one_channel_mask
                         else:
                             assert False, params['phase']
@@ -225,7 +234,7 @@ class RegularTrainer(TrainerBase):
                 if params['phase'] == 'FFT':
                     for color_channel in range(3):
                         ifft = filter(uap_z[0, color_channel, :, :], filter_z)
-                        perturbed_z_one_channel_mask = ifft.to(dtype)
+                        perturbed_z_one_channel_mask = restrict_tensor(ifft.to(dtype))
                         training_data['im_z'][:, color_channel, :, :] = perturbed_z_one_channel_mask.unsqueeze(0) + training_data['im_z'][:, color_channel, :, :].data
                 else:
                     training_data['im_z'] = uap_z + training_data['im_z'].data
@@ -297,17 +306,17 @@ class RegularTrainer(TrainerBase):
             )
 
             # for monitor in self._monitors:
-            #     monitor.update(trainer_data)
+                # monitor.update(trainer_data)
 
             """START：记录训练情况"""
-            # self.writer.add_scalar('norm/norm_x', norm_x_loss.item(), real_iter_num)
-            # self.writer.add_scalar('norm/norm_z', norm_z_loss.item(), real_iter_num)
-            self.writer.add_scalar('loss/cls_loss', cls_loss.item(), real_iter_num)
-            self.writer.add_scalar('loss/ctr_Loss', ctr_loss.item(), real_iter_num)
-            self.writer.add_scalar('loss/reg_Loss', reg_loss.item(), real_iter_num)
-            self.writer.add_scalar('iou', trainer_data['extras']['reg']['iou'].item(), real_iter_num)
-            self.writer.flush()
-            print('cls={:.2f}, ctr={:.2f}, reg={:.2f}, iou={:.2f}'.format(cls_loss.item(), ctr_loss.item(), reg_loss.item(), trainer_data['extras']['reg']['iou'].item()))
+            # self.writer.add_scalar('norm/norm_x', '{:.2f}'.format(norm_x_loss.item()), real_iter_num)
+            # self.writer.add_scalar('norm/norm_z', '{:.2f}'.format(norm_z_loss.item()), real_iter_num)
+            # self.writer.add_scalar('loss/cls_loss', '{:.2f}'.format(cls_loss.item()), real_iter_num)
+            # self.writer.add_scalar('loss/ctr_Loss', '{:.2f}'.format(ctr_loss.item()), real_iter_num)
+            # self.writer.add_scalar('loss/reg_Loss', '{:.2f}'.format(reg_loss.item()), real_iter_num)
+            # self.writer.add_scalar('iou', '{:.2f}'.format(trainer_data['extras']['reg']['iou'].item()), real_iter_num)
+            # self.writer.flush()
+            print('cls={:.2f}, ctr={:.2f}, reg={:.2f}, x_norm={:.2f}, z_norm={:.2f}, iou={:.2f}'.format(cls_loss.item(), ctr_loss.item(), reg_loss.item(), norm_x_loss.item(), norm_z_loss.item(), trainer_data['extras']['reg']['iou'].item()))
             """END：记录训练情况"""
 
             if not signal_img_debug:

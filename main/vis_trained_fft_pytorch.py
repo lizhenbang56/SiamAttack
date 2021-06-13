@@ -4,6 +4,8 @@ import os
 import torch
 from paths import ROOT_PATH
 from videoanalyst.pipeline.tracker_impl.siamfcpp_track import generate_gaussian
+from videoanalyst.engine.trainer.trainer_impl.regular_trainer import restrict_tensor
+
 
 
 def visualize_template_img(adv_template_img, save_name):
@@ -51,6 +53,7 @@ def vis_fft(filter, fft):
     masked_fft = filter * shift2center
     save_fft(masked_fft, 'masked_fft')
     assert cv2.imwrite('/tmp/0_mask.jpg', (filter*255).astype(np.uint8))
+    return
 
 
 def main():
@@ -61,9 +64,9 @@ def main():
     for color_channel in range(3):
         perturbed_z_one_channel = torch.fft.fft2(perturbation_fft_tensor[0, color_channel, :, :])
         vis_fft(filter, perturbed_z_one_channel)
-        perturbed_z_one_channel_mask = torch.fft.ifft2(torch.fft.ifftshift(filter *     perturbed_z_one_channel)).to(torch.float32)
-        no_mask =                      torch.fft.ifft2(torch.fft.ifftshift(             perturbed_z_one_channel)).to(torch.float32)
-        sub_mask =                     torch.fft.ifft2(torch.fft.ifftshift((1-filter) * perturbed_z_one_channel)).to(torch.float32)
+        perturbed_z_one_channel_mask = restrict_tensor(torch.fft.ifft2(torch.fft.ifftshift(filter *     perturbed_z_one_channel)).to(torch.float32))
+        no_mask =                      restrict_tensor(torch.fft.ifft2(torch.fft.ifftshift(             perturbed_z_one_channel)).to(torch.float32))
+        sub_mask =                     restrict_tensor(torch.fft.ifft2(torch.fft.ifftshift((1-filter) * perturbed_z_one_channel)).to(torch.float32))
         visualize_template_img(perturbed_z_one_channel_mask+128, 'masked_perturbation')
         visualize_template_img(no_mask+128,            save_name='no_mask')
         visualize_template_img(sub_mask+128,           save_name='sub_mask')

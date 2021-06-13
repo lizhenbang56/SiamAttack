@@ -11,4 +11,5 @@ scipy
 tensorboard
 xlsxwriter
 natsort
+future
 scikit-image==0.15.0
