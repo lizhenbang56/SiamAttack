@@ -42,7 +42,6 @@ class ExperimentGOT10k(object):
                  fgt_dir=None,
                  phase='track'):
         super(ExperimentGOT10k, self).__init__()
-        assert subset in ['val', 'test']
         self.subset = subset
         if use_dataset:
             self.dataset = GOT10k(root_dir, subset=subset, list_file=list_file)

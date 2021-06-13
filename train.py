@@ -4,7 +4,7 @@ import os
 import argparse
 import os.path as osp
 import sys
-
+import numpy as np
 import cv2
 from loguru import logger
 
@@ -17,6 +17,7 @@ from videoanalyst.engine import builder as engine_builder
 from videoanalyst.model import builder as model_builder
 from videoanalyst.optim import builder as optim_builder
 from videoanalyst.utils import Timer, complete_path_wt_root_in_cfg, ensure_dir
+from videoanalyst.pipeline.tracker_impl.siamfcpp_track import generate_gaussian
 
 cv2.setNumThreads(1)
 
@@ -46,7 +47,7 @@ def make_parser():
     parser.add_argument('--ctr_weight', default=1.0, type=float)
     parser.add_argument('--reg_weight', default=1.0, type=float)
     parser.add_argument('--patch_size', type=int, default=64)
-    parser.add_argument('--gpu_id', type=str, default='1,5,6,7')
+    parser.add_argument('--gpu_id', type=str, default='1,4,5,6')
     parser.add_argument('--phase', type=str, default='FFT')
     return parser
 
@@ -118,9 +119,9 @@ if __name__ == '__main__':
 
     """START：声明通用扰动"""
     if not parsed_args.uap_resume:
-        uap_z = torch.zeros((1, 3, 127, 127)).to(torch.complex64)
+        uap_z = torch.zeros((1, 3, 127, 127))
         if parsed_args.phase in ['OURS', 'FFT']:
-            patch_x = torch.zeros(1, 3, parsed_args.patch_size, parsed_args.patch_size).to(torch.complex64)  # 因为是相加，所以初始化为0
+            patch_x = torch.zeros(1, 3, parsed_args.patch_size, parsed_args.patch_size)  # 因为是相加，所以初始化为0
         elif parsed_args.phase == 'AP':
             patch_x = 127 * torch.ones(1, 3, parsed_args.patch_size, parsed_args.patch_size)
         elif parsed_args.phase in ['UAP']:
@@ -142,6 +143,13 @@ if __name__ == '__main__':
     dataset_name = parsed_args.config.split('/')[-2]
     """END：声明通用扰动"""
 
+    """创建高斯高通滤波器"""
+    filter_z_np = generate_gaussian(127)
+    filter_z = torch.from_numpy(filter_z_np)
+    filter_x_np = generate_gaussian(64)
+    filter_x = torch.from_numpy(filter_x_np)
+    """创建高斯高通滤波器"""
+
     logger.info("Start training")
     while not trainer.is_completed():
         patch_x, uap_z, real_iter_num = trainer.train(patch_x, uap_z, real_iter_num, parsed_args.signal_img_debug,
@@ -150,7 +158,9 @@ if __name__ == '__main__':
                                                               'ctr_weight': parsed_args.ctr_weight,
                                                               'reg_weight': parsed_args.reg_weight,
                                                               'patch_size': parsed_args.patch_size,
-                                                              'phase': parsed_args.phase})
+                                                              'phase': parsed_args.phase,
+                                                              'filter_z': filter_z,
+                                                              'filter_x': filter_x})
         trainer.save_snapshot()
     # export final model
     trainer.save_snapshot(model_param_only=True)

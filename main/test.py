@@ -19,7 +19,7 @@ from videoanalyst.utils import complete_path_wt_root_in_cfg
 def make_parser():
     parser = argparse.ArgumentParser(description='Test')
     parser.add_argument('--dataset_name', type=str, default='GOT-10k_Val')  # 'GOT-10k_Val' 'OTB_2015' 'LaSOT'
-    parser.add_argument('--loop_num', type=int, default=2048)
+    parser.add_argument('--loop_num', type=int, default=512)
     parser.add_argument('--do_attack', type=str, default='true')
     parser.add_argument('--trainset', default='fulldata', type=str)
     parser.add_argument('--optimize_mode', default='FGSM', type=str)
@@ -31,9 +31,9 @@ def make_parser():
     parser.add_argument('--lr_z', default=0.1, type=float)
     parser.add_argument('--lr_x', default=0.5, type=float)
     parser.add_argument('--gpu_id', default='1,5,6,7', type=str)
-    parser.add_argument('--patch_size', type=int, default=16)
+    parser.add_argument('--patch_size', type=int, default=64)
     parser.add_argument('--backbone', type=str, default='googlenet')  # 'alexnet' 'shufflenetv2x1_0'
-    parser.add_argument('--phase', type=str, default='OURS')
+    parser.add_argument('--phase', type=str, default='FFT')
     return parser
 
 
@@ -69,6 +69,7 @@ if __name__ == '__main__':
     parser = make_parser()
     parsed_args = parser.parse_args()
     # 设置配置文件路径
+    print('temp train')
     if parsed_args.dataset_name == 'LaSOT':
         parsed_args.config = 'experiments/siamfcpp/test/lasot/siamfcpp_{}-lasot.yaml'.format(parsed_args.backbone)
     elif parsed_args.dataset_name == 'GOT-10k_Val':

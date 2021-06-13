@@ -5,12 +5,32 @@ import os
 import numpy as np
 
 import torch
-
+from videoanalyst.engine.trainer.trainer_impl.regular_trainer import filter
 from videoanalyst.pipeline.pipeline_base import TRACK_PIPELINES, PipelineBase
 from videoanalyst.pipeline.utils import (cxywh2xywh, get_crop, xyxy2xywh,
                                          get_subwindow_tracking,
                                          imarray_to_tensor, tensor_to_numpy,
                                          xywh2cxywh, xyxy2cxywh, xyxy2xywh)
+
+
+def normalization(x):
+    """"
+    归一化到区间{0,1]
+    返回副本
+    """
+    _range = np.max(x) - np.min(x)
+    return (x - np.min(x)) / _range
+
+
+def generate_gaussian(size):
+    nrows = ncols = size
+    sigmax, sigmay = 1000000, 1000000  # 高斯函数的标准差，越小越模糊。已验证。
+    cy, cx = nrows/2, ncols/2
+    x = np.linspace(0, nrows, nrows)
+    y = np.linspace(0, ncols, ncols)
+    X, Y = np.meshgrid(x, y)
+    gmask = np.exp(-(((X-cx)/sigmax)**2 + ((Y-cy)/sigmay)**2))
+    return normalization(1-gmask)
 
 
 def _point_from_original_img_to_search_img(point_in_original_img,
@@ -187,15 +207,10 @@ class SiamFCppTracker(PipelineBase):
             if self.do_attack:
                 if self.phase == 'FFT':
                     dtype = data.dtype
-
-                    # # 方案1
-                    # data_fft = torch.fft.fft2(data)
-                    # perturbed_data_fft = data_fft + self.uap_z.to(self.device)
-                    # data = torch.fft.ifft2(perturbed_data_fft).to(dtype)
-
-                    # 方案2
-                    perturbed_z = torch.fft.ifft2(self.uap_z.to(self.device)).to(dtype)
-                    data += perturbed_z
+                    for color_channel in range(3):
+                        ifft = filter(self.uap_z[0, color_channel, :, :].to(self.device), self.filter_z.to(self.device))
+                        perturbed_z_one_channel_mask = ifft.to(dtype)
+                        data[:,color_channel, :, :] += perturbed_z_one_channel_mask.unsqueeze(0)
                 else:
                     data += self.uap_z.to(self.device)
             """END：添加扰动"""
@@ -218,6 +233,13 @@ class SiamFCppTracker(PipelineBase):
             self.uap_z = torch.load(uap_z_path, map_location='cpu')
             print('loading: ', patch_x_path, uap_z_path)
             """END：读入扰动"""
+
+            """创建高斯高通滤波器"""
+            filter_z_np = generate_gaussian(127)
+            self.filter_z = torch.from_numpy(filter_z_np)
+            filter_x_np = generate_gaussian(64)
+            self.filter_x = torch.from_numpy(filter_x_np)
+            """创建高斯高通滤波器"""
         else:
             print('NO ATTACK')
 
@@ -343,8 +365,10 @@ class SiamFCppTracker(PipelineBase):
                     data += self.patch_x.to(self.device)[0]
                 elif self.phase == 'FFT':
                     dtype = data.dtype
-                    perturbed_x = torch.fft.ifft2(self.patch_x.to(self.device)[0]).to(dtype)
-                    data[0, :, y1:y1+h, x1:x1+w] += perturbed_x
+                    for color_channel in range(3):
+                        ifft = filter(self.patch_x[0,color_channel,:,:].to(self.device), self.filter_x.to(self.device))
+                        perturbed_x_one_channel_mask = ifft.to(dtype)
+                        data[0, color_channel, y1:y1+h, x1:x1+w] += perturbed_x_one_channel_mask
                 else:
                     assert False, self.phase
             except Exception:

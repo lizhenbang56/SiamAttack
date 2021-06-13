@@ -26,6 +26,15 @@ def get_patch_grad(tensor, pos, patch_w, patch_h):
     return grad / tensor.shape[0]
 
 
+def filter(tensor, filter):
+    fft = torch.fft.fft2(tensor)  # 把扰动图像转到频域
+    fft_center = torch.fft.fftshift(fft)  # 把低频移到中央
+    fft_center_mask = filter * fft_center  # 滤波
+    ifftshift = torch.fft.ifftshift(fft_center_mask)  # 进行反平移
+    ifft = torch.fft.ifft2(ifftshift)  # 变回图像
+    return ifft
+
+
 @TRACK_TRAINERS.register
 class RegularTrainer(TrainerBase):
     r"""
@@ -178,6 +187,8 @@ class RegularTrainer(TrainerBase):
                 """START：将扰动放至正确的显卡"""
                 patch_x = patch_x.to(self._state["devices"][0])
                 uap_z = uap_z.to(self._state["devices"][0])
+                filter_x = params['filter_x'].to(self._state["devices"][0])
+                filter_z = params['filter_z'].to(self._state["devices"][0])
                 """END：将扰动放至正确的显卡"""
 
                 """START：设置扰动为可获取梯度"""
@@ -196,16 +207,11 @@ class RegularTrainer(TrainerBase):
                         elif params['phase'] == 'UAP':
                             training_data['im_x'][idx] += patch_x[0]
                         elif params['phase'] == 'FFT':
-                            # # 方案1：图像fft后ifft，扰动直接是频域，不变。
-                            # dtype = training_data['im_x'][idx].dtype
-                            # fft_img_x = torch.fft.fft2(training_data['im_x'][idx, :, y1:y2+1, x1:x2+1])
-                            # perturbed_fft_img_x = fft_img_x + patch_x[0]
-                            # training_data['im_x'][idx, :, y1:y2+1, x1:x2+1] = torch.fft.ifft2(perturbed_fft_img_x).to(dtype)
-
-                            # 方案2：扰动是频域，ifft；图像不变。
                             dtype = training_data['im_x'][idx].dtype
-                            perturbed_x = torch.fft.ifft2(patch_x[0]).to(dtype)
-                            training_data['im_x'][idx, :, y1:y2+1, x1:x2+1] += perturbed_x
+                            for color_channel in range(3):
+                                ifft = filter(patch_x[0,color_channel,:,:], filter_x)
+                                perturbed_x_one_channel_mask = ifft.to(dtype)
+                                training_data['im_x'][idx, color_channel, y1:y2+1, x1:x2+1] += perturbed_x_one_channel_mask
                         else:
                             assert False, params['phase']
                     except Exception as e:
@@ -217,16 +223,10 @@ class RegularTrainer(TrainerBase):
 
                 """START：将扰动叠加至输入图像"""
                 if params['phase'] == 'FFT':
-                    dtype = training_data['im_z'].data.dtype
-
-                    # # 方案1：图像fft后ifft，扰动直接是频域，不变。
-                    # fft_img_z = torch.fft.fft2(training_data['im_z'].data)
-                    # perturbed_fft_img_z = fft_img_z + uap_z
-                    # training_data['im_z'] = torch.fft.ifft2(perturbed_fft_img_z).to(dtype)
-
-                    # 方案2：扰动是频域，ifft；图像不变。
-                    perturbed_z = torch.fft.ifft2(uap_z).to(dtype)
-                    training_data['im_z'] = perturbed_z + training_data['im_z'].data
+                    for color_channel in range(3):
+                        ifft = filter(uap_z[0, color_channel, :, :], filter_z)
+                        perturbed_z_one_channel_mask = ifft.to(dtype)
+                        training_data['im_z'][:, color_channel, :, :] = perturbed_z_one_channel_mask.unsqueeze(0) + training_data['im_z'][:, color_channel, :, :].data
                 else:
                     training_data['im_z'] = uap_z + training_data['im_z'].data
                 """END：将扰动叠加至输入图像"""
