@@ -40,7 +40,7 @@ def restrict_tensor(data, do=False):
     if do:
         # return 1.0 * data/(torch.max(torch.abs(data)))
         # return data/10
-        return torch.clip(data, -20, 20)
+        return torch.clip(data, -10, 10)
     else:
         return data
 
@@ -129,7 +129,7 @@ class RegularTrainer(TrainerBase):
         self.reg_weight = params['reg_weight']
 
         # 设定搜索图像损失权重与学习率
-        self.l2_x_background_weight = 0.00  # 搜索图像的l2权重同样要大。因为希望x扰动小。
+        self.l2_x_background_weight = 0.001  # 搜索图像的l2权重同样要大。因为希望x扰动小。
         self.lr_x = 1.0  # 修改成和z一样
         self.optimize_mode = 'FGSM'
         """END：设定参数"""
