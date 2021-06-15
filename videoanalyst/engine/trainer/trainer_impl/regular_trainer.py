@@ -61,7 +61,7 @@ def generate_perturbation_x(patch_x, filter_x, patch_x_background, color_channel
 
 def apply_perturbation(search_img, perturbation, x1, y1, x2, y2, patch_x_background, color_channel):
     search_img[y1:y2+1, x1:x2+1] += perturbation
-    search_img += patch_x_background[0][color_channel, :, :]
+    search_img += restrict_tensor(patch_x_background[0][color_channel, :, :], True)
     return search_img
 
 
