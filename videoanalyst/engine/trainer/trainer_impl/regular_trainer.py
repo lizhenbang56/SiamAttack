@@ -53,14 +53,18 @@ def generate_perturbation_x1(patch_x, filter_x, patch_x_background, color_channe
     return patch_x_background[0][color_channel, :, :]
 
 
-def generate_perturbation_x(patch_x, filter_x, patch_x_background, color_channel, dtype, x1, y1, x2, y2, requires_grad=False):
+def generate_perturbation_x_0(patch_x, filter_x, patch_x_background, color_channel, dtype, x1, y1, x2, y2, requires_grad=False):
     ifft = filter(patch_x[0,color_channel,:,:], filter_x)  # 进行高通滤波
     perturbed_x_one_channel_mask = restrict_tensor(ifft.to(dtype))  # 限制值，转为整型
     return perturbed_x_one_channel_mask
 
 
+def generate_perturbation_x(patch_x, filter_x, patch_x_background, color_channel, dtype, x1, y1, x2, y2, requires_grad=False):
+    return patch_x_background[0][color_channel, :, :]
+
+
 def apply_perturbation(search_img, perturbation, x1, y1, x2, y2):
-    search_img[y1:y2+1, x1:x2+1] += perturbation
+    search_img += perturbation
     return search_img
 
 
@@ -193,8 +197,18 @@ class RegularTrainer(TrainerBase):
                 # else:
                 #     training_data = next(self._dataloader_uap)
                 #     background = True
-                training_data = next(self._dataloader)
-                background = False
+                background = 1  # 0: 不使用背景，1：仅使用背景不使用patch，2：同时使用背景和patch
+                if background == 0:  # 不适用背景
+                    training_data = next(self._dataloader)
+                elif background == 1:
+                    training_data = next(self._dataloader_uap)
+                elif background == 2:
+                    if random.random() > 0.5:
+                        training_data = next(self._dataloader)
+                        background = False
+                    else:
+                        training_data = next(self._dataloader_uap)
+                        background = True
                 """END：获取 training data"""
 
             training_data = move_data_to_device(training_data,
@@ -217,7 +231,7 @@ class RegularTrainer(TrainerBase):
                 """START：设置扰动为可获取梯度"""
                 uap_z.requires_grad = True
                 patch_x.requires_grad = True
-                if background:
+                if background != 0:
                     patch_x_background.requires_grad = True
                 else:
                     patch_x_background.requires_grad = False
@@ -297,18 +311,24 @@ class RegularTrainer(TrainerBase):
                     """START：收集相对于输入图像的梯度"""
                     im_z_grad = torch.mean(uap_z.grad.data, dim=0, keepdims=True)
                     patch_grad = torch.mean(patch_x.grad.data, dim=0, keepdims=True)
-                    if background:
+                    if background != 0:
                         background_grad = torch.mean(patch_x_background.grad.data, dim=0, keepdim=True)
                         patch_x_background = fgsm_attack(background_grad, patch_x_background, -self.lr_x)  # 对应的gt是真实目标。这里希望预测原理真实目标。
                         patch_x_background = patch_x_background.detach()
                     """END：收集相对于输入图像的梯度"""
 
                     """START：根据梯度得到新的扰动"""
-                    patch_x = fgsm_attack(patch_x, patch_grad, self.lr_x)
+                    if background != 1:
+                        patch_x = fgsm_attack(patch_x, patch_grad, self.lr_x)
+                    else:
+                        patch_x = fgsm_attack(patch_x, patch_grad, 0)
                     if params['phase'] == 'AP':
                         uap_z = fgsm_attack(uap_z, im_z_grad, 0)
                     else:
-                        uap_z = fgsm_attack(uap_z, im_z_grad, self.lr_z)
+                        if background == 1:
+                            uap_z = fgsm_attack(uap_z, im_z_grad, -self.lr_z)  # 仅处理背景时，模板要梯度上升而不是下降
+                        else:
+                            uap_z = fgsm_attack(uap_z, im_z_grad, self.lr_z)
                     patch_x = patch_x.detach()
                     uap_z = uap_z.detach()
                     """END：根据梯度得到新的扰动"""
@@ -337,7 +357,7 @@ class RegularTrainer(TrainerBase):
             # self.writer.add_scalar('loss/reg_Loss', '{:.2f}'.format(reg_loss.item()), real_iter_num)
             # self.writer.add_scalar('iou', '{:.2f}'.format(trainer_data['extras']['reg']['iou'].item()), real_iter_num)
             # self.writer.flush()
-            if background:
+            if background != 0:
                 print('background', end=' ')
             else:
                 print('fake gt', end=' ')
