@@ -118,29 +118,19 @@ if __name__ == '__main__':
     trainer.resume(parsed_args.resume)
     # trainer.init_train()
 
+    """START：读入扰动"""
+    loop_num=256
+    uap_root = 'snapshots_imperceptible_patch/{}'.format('FFT')
+    patch_x_path = os.path.join(uap_root, 'x_{}'.format(loop_num))
+    patch_x_background_path = os.path.join(uap_root, 'x_background_{}'.format(loop_num))
+    uap_z_path = os.path.join(uap_root, 'z_{}'.format(loop_num))
+    patch_x = torch.load(patch_x_path, map_location='cpu')
+    uap_z = torch.load(uap_z_path, map_location='cpu')
+    print('loading: ', patch_x_path, patch_x_background_path, uap_z_path)
+    patch_x_background = torch.zeros(1, 3, 303, 303)
+    """END：读入扰动"""
+
     """START：声明通用扰动"""
-    if not parsed_args.uap_resume:
-        uap_z = torch.zeros((1, 3, 127, 127))
-        if parsed_args.phase in ['OURS', 'FFT']:
-            patch_x = torch.zeros(1, 3, parsed_args.patch_size, parsed_args.patch_size)  # 因为是相加，所以初始化为0
-            patch_x_background = torch.zeros(1, 3, 303, 303)
-        elif parsed_args.phase == 'AP':
-            patch_x = 127 * torch.ones(1, 3, parsed_args.patch_size, parsed_args.patch_size)
-        elif parsed_args.phase in ['UAP']:
-            patch_x = torch.zeros(1, 3, 303, 303)
-        optimizer = torch.optim.AdamW([patch_x, uap_z], lr=0.1, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.0,
-                                      amsgrad=False)  # bug in pytorch1.8.1
-        
-        # uap_z.requires_grad = True
-        # patch_x.requires_grad = True
-        # optimizer = torch.optim.SGD([patch_x, uap_z], lr=0.1)
-    else:
-        uap_num = 4096
-        uap_x_path = '/tmp/uap_v1.1/x_{}'.format(uap_num)
-        uap_z_path = '/tmp/uap_v1.1/z_{}'.format(uap_num)
-        patch_x = torch.load(uap_x_path)
-        uap_z = torch.load(uap_z_path)
-        print('load: ', uap_x_path, uap_z_path)
     real_iter_num = 0
     dataset_name = parsed_args.config.split('/')[-2]
     """END：声明通用扰动"""
@@ -154,7 +144,7 @@ if __name__ == '__main__':
 
     logger.info("Start training")
     while not trainer.is_completed():
-        patch_x, uap_z, real_iter_num = trainer.train(patch_x, uap_z, real_iter_num, parsed_args.signal_img_debug,
+        patch_x, uap_z, real_iter_num = trainer.train(patch_x, patch_x_background, uap_z, real_iter_num, parsed_args.signal_img_debug,
                                                       visualize=parsed_args.uap_resume, optimizer=optimizer, dataset_name=dataset_name,
                                                       params={'cls_weight': parsed_args.cls_weight,
                                                               'ctr_weight': parsed_args.ctr_weight,
@@ -162,8 +152,7 @@ if __name__ == '__main__':
                                                               'patch_size': parsed_args.patch_size,
                                                               'phase': parsed_args.phase,
                                                               'filter_z': filter_z,
-                                                              'filter_x': filter_x,
-                                                              'patch_x_background': patch_x_background})
+                                                              'filter_x': filter_x})
         trainer.save_snapshot()
     # export final model
     trainer.save_snapshot(model_param_only=True)

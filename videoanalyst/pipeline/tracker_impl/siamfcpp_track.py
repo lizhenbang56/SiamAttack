@@ -372,7 +372,7 @@ class SiamFCppTracker(PipelineBase):
                             self.filter_x.to(self.device),
                             self.patch_background_x.to(self.device),
                             color_channel, dtype, x1, y1, x1+w-1, y1+h-1)
-                        data[0, color_channel, :, :] = apply_perturbation(data[0, color_channel, :, :], perturbed_x_one_channel_mask, x1, y1, x1+w-1, y1+h-1)
+                        data[0, color_channel, :, :] = apply_perturbation(data[0, color_channel, :, :], perturbed_x_one_channel_mask, x1, y1, x1+w-1, y1+h-1, self.patch_background_x.to(self.device), color_channel)
                 else:
                     assert False, self.phase
             except Exception as e:

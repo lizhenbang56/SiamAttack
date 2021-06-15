@@ -59,8 +59,9 @@ def generate_perturbation_x(patch_x, filter_x, patch_x_background, color_channel
     return perturbed_x_one_channel_mask
 
 
-def apply_perturbation(search_img, perturbation, x1, y1, x2, y2):
+def apply_perturbation(search_img, perturbation, x1, y1, x2, y2, patch_x_background, color_channel):
     search_img[y1:y2+1, x1:x2+1] += perturbation
+    search_img += patch_x_background[0][color_channel, :, :]
     return search_img
 
 
@@ -116,7 +117,7 @@ class RegularTrainer(TrainerBase):
         super(RegularTrainer, self).init_train()
         logger.info("{} initialized".format(type(self).__name__))
 
-    def train(self, patch_x, uap_z, real_iter_num, signal_img_debug, visualize, optimizer, dataset_name, params):
+    def train(self, patch_x, patch_x_background, uap_z, real_iter_num, signal_img_debug, visualize, optimizer, dataset_name, params):
         """"""
         if not self._state["initialized"]:
             self.init_train()
@@ -126,18 +127,10 @@ class RegularTrainer(TrainerBase):
         self.cls_weight = params['cls_weight']
         self.ctr_weight = params['ctr_weight']
         self.reg_weight = params['reg_weight']
-        
-        # 设定模板图像损失权重与学习率
-        self.l2_z_weight = 0.005  # 希望模板图像 z 的扰动小，因此权重应该大。
-        self.lr_z = 0.5
 
         # 设定搜索图像损失权重与学习率
-        if params['phase'] == 'AP':
-            self.l2_x_weight = 0.00001  # 不用约束搜索补丁的值
-            self.lr_x = 0.5
-        else:
-            self.l2_x_weight = 0.005  # 搜索图像的l2权重同样要大。因为希望x扰动小。
-            self.lr_x = 0.5  # 修改成和z一样
+        self.l2_x_background_weight = 0.00  # 搜索图像的l2权重同样要大。因为希望x扰动小。
+        self.lr_x = 1.0  # 修改成和z一样
         self.optimize_mode = 'FGSM'
         """END：设定参数"""
 
@@ -187,14 +180,8 @@ class RegularTrainer(TrainerBase):
             with Timer(name="data", output_dict=time_dict):
 
                 """START：获取 training data"""
-                # if random.random() > 0.5:
-                #     training_data = next(self._dataloader)
-                #     background = False
-                # else:
-                #     training_data = next(self._dataloader_uap)
-                #     background = True
                 training_data = next(self._dataloader)
-                background = False
+                background = True
                 """END：获取 training data"""
 
             training_data = move_data_to_device(training_data,
@@ -208,19 +195,16 @@ class RegularTrainer(TrainerBase):
 
                 """START：将扰动放至正确的显卡"""
                 patch_x = patch_x.to(self._state["devices"][0])
-                patch_x_background = params['patch_x_background'].to(self._state["devices"][0])
+                patch_x_background = patch_x_background.to(self._state["devices"][0])
                 uap_z = uap_z.to(self._state["devices"][0])
                 filter_x = params['filter_x'].to(self._state["devices"][0])
                 filter_z = params['filter_z'].to(self._state["devices"][0])
                 """END：将扰动放至正确的显卡"""
 
                 """START：设置扰动为可获取梯度"""
-                uap_z.requires_grad = True
-                patch_x.requires_grad = True
-                if background:
-                    patch_x_background.requires_grad = True
-                else:
-                    patch_x_background.requires_grad = False
+                uap_z.requires_grad = False
+                patch_x.requires_grad = False
+                patch_x_background.requires_grad = True
                 """END：设置扰动为可获取梯度"""
 
                 """START：在搜索图像添加补丁"""
@@ -237,7 +221,7 @@ class RegularTrainer(TrainerBase):
                             dtype = training_data['im_x'][idx].dtype
                             for color_channel in range(3):
                                 perturbed_x_one_channel_mask = generate_perturbation_x(patch_x, filter_x, patch_x_background, color_channel, dtype, x1, y1, x2, y2, background)
-                                training_data['im_x'][idx, color_channel, :, :] = apply_perturbation(training_data['im_x'][idx, color_channel, :, :], perturbed_x_one_channel_mask, x1, y1, x2, y2)
+                                training_data['im_x'][idx, color_channel, :, :] = apply_perturbation(training_data['im_x'][idx, color_channel, :, :], perturbed_x_one_channel_mask, x1, y1, x2, y2, patch_x_background, color_channel)
                         else:
                             assert False, params['phase']
                     except Exception as e:
@@ -273,7 +257,7 @@ class RegularTrainer(TrainerBase):
                 for loss_name, loss in self._losses.items():
                     training_losses[loss_name], extras[loss_name] = loss(
                         predict_data, training_data)
-                norm_x_loss = torch.mean(patch_x.pow(2))
+                norm_x_background_loss = torch.mean(patch_x_background.pow(2))
                 norm_z_loss = torch.mean(uap_z.pow(2))
                 cls_loss = training_losses['cls']
                 ctr_loss = training_losses['ctr']
@@ -281,8 +265,7 @@ class RegularTrainer(TrainerBase):
                 total_loss = self.cls_weight*cls_loss + \
                              self.ctr_weight*ctr_loss + \
                              self.reg_weight*reg_loss + \
-                             self.l2_z_weight*norm_z_loss + \
-                             self.l2_x_weight*norm_x_loss
+                             self.l2_x_background_weight*norm_x_background_loss
                 """END：计算损失"""
 
                 """START：模型梯度清空"""
@@ -293,70 +276,35 @@ class RegularTrainer(TrainerBase):
                 total_loss.backward()
                 """END：梯度反传"""
 
-                if self.optimize_mode == 'FGSM':
-                    """START：收集相对于输入图像的梯度"""
-                    im_z_grad = torch.mean(uap_z.grad.data, dim=0, keepdims=True)
-                    patch_grad = torch.mean(patch_x.grad.data, dim=0, keepdims=True)
-                    if background:
-                        background_grad = torch.mean(patch_x_background.grad.data, dim=0, keepdim=True)
-                        patch_x_background = fgsm_attack(background_grad, patch_x_background, -self.lr_x)  # 对应的gt是真实目标。这里希望预测原理真实目标。
-                        patch_x_background = patch_x_background.detach()
-                    """END：收集相对于输入图像的梯度"""
-
-                    """START：根据梯度得到新的扰动"""
-                    patch_x = fgsm_attack(patch_x, patch_grad, self.lr_x)
-                    if params['phase'] == 'AP':
-                        uap_z = fgsm_attack(uap_z, im_z_grad, 0)
-                    else:
-                        uap_z = fgsm_attack(uap_z, im_z_grad, self.lr_z)
-                    patch_x = patch_x.detach()
-                    uap_z = uap_z.detach()
-                    """END：根据梯度得到新的扰动"""
-                elif self.optimize_mode == 'optimizer':
-                    optimizer.step()
-                else:
-                    assert False, self.optimize_mode
+                """START：收集相对于输入图像的梯度"""
+                background_grad = torch.mean(patch_x_background.grad.data, dim=0, keepdim=True)
+                patch_x_background = fgsm_attack(patch_x_background, background_grad, self.lr_x)  # 对应的gt是真实目标。这里希望预测原理真实目标。
+                patch_x_background = patch_x_background.detach()
+                """END：收集相对于输入图像的梯度"""
 
             trainer_data = dict(
                 schedule_info=schedule_info,
                 training_losses=training_losses,
                 extras=extras,
                 time_dict=time_dict,
-                norm_x_loss=norm_x_loss.item(),
+                norm_x_background_loss=norm_x_background_loss.item(),
                 norm_z_loss=norm_z_loss.item(),
             )
 
-            # for monitor in self._monitors:
-                # monitor.update(trainer_data)
-
             """START：记录训练情况"""
-            # self.writer.add_scalar('norm/norm_x', '{:.2f}'.format(norm_x_loss.item()), real_iter_num)
-            # self.writer.add_scalar('norm/norm_z', '{:.2f}'.format(norm_z_loss.item()), real_iter_num)
-            # self.writer.add_scalar('loss/cls_loss', '{:.2f}'.format(cls_loss.item()), real_iter_num)
-            # self.writer.add_scalar('loss/ctr_Loss', '{:.2f}'.format(ctr_loss.item()), real_iter_num)
-            # self.writer.add_scalar('loss/reg_Loss', '{:.2f}'.format(reg_loss.item()), real_iter_num)
-            # self.writer.add_scalar('iou', '{:.2f}'.format(trainer_data['extras']['reg']['iou'].item()), real_iter_num)
-            # self.writer.flush()
-            if background:
-                print('background', end=' ')
-            else:
-                print('fake gt', end=' ')
-            print('cls={:.2f}, ctr={:.2f}, reg={:.2f}, x_norm={:.2f}, z_norm={:.2f}, iou={:.2f}'.format(cls_loss.item(), ctr_loss.item(), reg_loss.item(), norm_x_loss.item(), norm_z_loss.item(), trainer_data['extras']['reg']['iou'].item()))
+            print('cls={:.2f}, ctr={:.2f}, reg={:.2f}, x_background_norm={:.2f}, iou={:.2f}'.format(cls_loss.item(), ctr_loss.item(), reg_loss.item(), norm_x_background_loss.item(), trainer_data['extras']['reg']['iou'].item()))
             """END：记录训练情况"""
 
-            if not signal_img_debug:
-                del training_data
+            del training_data
 
             print_str = self._state["print_str"]
             pbar.set_description(print_str)
 
             """START：保存扰动"""
             if real_iter_num & (real_iter_num - 1) == 0:
-                save_path_x = os.path.join(save_dir, 'x_{}'.format(real_iter_num))
-                save_path_z = os.path.join(save_dir, 'z_{}'.format(real_iter_num))
-                torch.save(patch_x, save_path_x)
-                torch.save(uap_z, save_path_z)
-                print(' save to: {} {}'.format(save_path_x, save_path_z))
+                save_path_x_background = os.path.join(save_dir, 'x_background_{}'.format(real_iter_num))
+                torch.save(patch_x_background, save_path_x_background)
+                print(' save to: {}'.format(save_path_x_background))
             """END：保存扰动"""
 
         return patch_x, uap_z, real_iter_num
