@@ -75,8 +75,9 @@ class DenseboxTarget(TargetBase):
         im_x, bbox_x = data_x["image"], data_x["anno"]  # xyxy
 
         """START：生成 fake_gt_xyxy_in_search_img"""
-        fake_gt_xyxy_in_search_img = self.generate_fake_gt_xyxy_in_search_img()  # xyxy
-        bbox_x = fake_gt_xyxy_in_search_img  # xyxy
+        if self.phase != 'UAP':  # 若是UAP，则意味着background，则gt是真目标，fgsm取反
+            fake_gt_xyxy_in_search_img = self.generate_fake_gt_xyxy_in_search_img()  # xyxy
+            bbox_x = fake_gt_xyxy_in_search_img  # xyxy
         """END：生成 fake_gt_xyxy_in_search_img"""
 
         is_negative_pair = sampled_data["is_negative_pair"]

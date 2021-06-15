@@ -9,7 +9,7 @@ from ..monitor import builder as monitor_builder
 from .trainer_base import TASK_TRAINERS, TrainerBase
 
 
-def build(task: str, cfg: CfgNode, optimizer, dataloader,
+def build(task: str, cfg: CfgNode, optimizer, dataloader, dataloader_uap,
           tracker=None) -> TrainerBase:
     r"""
     Builder function.
@@ -40,7 +40,7 @@ def build(task: str, cfg: CfgNode, optimizer, dataloader,
     if task == "vos":
         trainer = MODULES[name](optimizer, dataloader, monitors, tracker)
     else:
-        trainer = MODULES[name](optimizer, dataloader, monitors)
+        trainer = MODULES[name](optimizer, dataloader, dataloader_uap, monitors)
     hps = trainer.get_hps()
     hps = merge_cfg_into_hps(cfg[name], hps)
     trainer.set_hps(hps)

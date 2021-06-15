@@ -6,7 +6,7 @@ cd $SHELL_FOLDER
 # 配置环境
 
 # 设置变量
-loop_num=512
+loop_num=128
 patch_size=64
 dataset_name="GOT-10k_Val"  # "OTB_2015" "GOT-10k_Val"
 backbone="googlenet"  # "shufflenetv2x1_0"

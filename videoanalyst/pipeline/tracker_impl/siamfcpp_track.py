@@ -5,7 +5,7 @@ import os
 import numpy as np
 import math
 import torch
-from videoanalyst.engine.trainer.trainer_impl.regular_trainer import filter, restrict_tensor
+from videoanalyst.engine.trainer.trainer_impl.regular_trainer import filter, restrict_tensor, generate_perturbation_x, apply_perturbation
 from videoanalyst.pipeline.pipeline_base import TRACK_PIPELINES, PipelineBase
 from videoanalyst.pipeline.utils import (cxywh2xywh, get_crop, xyxy2xywh,
                                          get_subwindow_tracking,
@@ -23,7 +23,7 @@ def normalization(x):
 
 
 def generate_gaussian(size):
-    rate = 0.02
+    rate = 0.25
     mask = np.ones((size, size))
     x1 = y1 =  math.ceil(rate*size)
     x2 = y2 = math.floor((1-rate)*size)
@@ -227,10 +227,12 @@ class SiamFCppTracker(PipelineBase):
             """START：读入扰动"""
             self.uap_root = 'snapshots_imperceptible_patch/{}'.format(self.save_name)
             patch_x_path = os.path.join(self.uap_root, 'x_{}'.format(self.loop_num))
+            patch_x_background_path = os.path.join(self.uap_root, 'x_background_{}'.format(self.loop_num))
             uap_z_path = os.path.join(self.uap_root, 'z_{}'.format(self.loop_num))
             self.patch_x = torch.load(patch_x_path, map_location='cpu')
+            self.patch_background_x = torch.load(patch_x_background_path, map_location='cpu')
             self.uap_z = torch.load(uap_z_path, map_location='cpu')
-            print('loading: ', patch_x_path, uap_z_path)
+            print('loading: ', patch_x_path, patch_x_background_path, uap_z_path)
             """END：读入扰动"""
 
             """创建高斯高通滤波器"""
@@ -365,13 +367,16 @@ class SiamFCppTracker(PipelineBase):
                 elif self.phase == 'FFT':
                     dtype = data.dtype
                     for color_channel in range(3):
-                        ifft = filter(self.patch_x[0,color_channel,:,:].to(self.device), self.filter_x.to(self.device))
-                        perturbed_x_one_channel_mask = restrict_tensor(ifft.to(dtype))
-                        data[0, color_channel, y1:y1+h, x1:x1+w] += perturbed_x_one_channel_mask
+                        perturbed_x_one_channel_mask = generate_perturbation_x(
+                            self.patch_x.to(self.device), 
+                            self.filter_x.to(self.device),
+                            self.patch_background_x.to(self.device),
+                            color_channel, dtype, x1, y1, x1+w-1, y1+h-1)
+                        data[0, color_channel, :, :] = apply_perturbation(data[0, color_channel, :, :], perturbed_x_one_channel_mask, x1, y1, x1+w-1, y1+h-1)
                 else:
                     assert False, self.phase
-            except Exception:
-                print('bad prediction')
+            except Exception as e:
+                print('bad prediction', e)
         """END：在搜索图像添加对抗补丁（不进行缩放）"""
 
         with torch.no_grad():

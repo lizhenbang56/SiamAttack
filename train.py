@@ -108,11 +108,12 @@ if __name__ == '__main__':
     # load data
     with Timer(name="Dataloader building", verbose=True):
         dataloader = dataloader_builder.build(task, task_cfg.data, patch_size=parsed_args.patch_size, phase=parsed_args.phase)
+        dataloader_uap = dataloader_builder.build(task, task_cfg.data, patch_size=parsed_args.patch_size, phase='UAP')
     # build optimizer
     optimizer = optim_builder.build(task, task_cfg.optim, model)
     # build trainer
     trainer = engine_builder.build(task, task_cfg.trainer, "trainer", optimizer,
-                                   dataloader)
+                                   dataloader, dataloader_uap)
     trainer.set_device(devs)
     trainer.resume(parsed_args.resume)
     # trainer.init_train()
@@ -122,6 +123,7 @@ if __name__ == '__main__':
         uap_z = torch.zeros((1, 3, 127, 127))
         if parsed_args.phase in ['OURS', 'FFT']:
             patch_x = torch.zeros(1, 3, parsed_args.patch_size, parsed_args.patch_size)  # 因为是相加，所以初始化为0
+            patch_x_background = torch.zeros(1, 3, 303, 303)
         elif parsed_args.phase == 'AP':
             patch_x = 127 * torch.ones(1, 3, parsed_args.patch_size, parsed_args.patch_size)
         elif parsed_args.phase in ['UAP']:
@@ -160,7 +162,8 @@ if __name__ == '__main__':
                                                               'patch_size': parsed_args.patch_size,
                                                               'phase': parsed_args.phase,
                                                               'filter_z': filter_z,
-                                                              'filter_x': filter_x})
+                                                              'filter_x': filter_x,
+                                                              'patch_x_background': patch_x_background})
         trainer.save_snapshot()
     # export final model
     trainer.save_snapshot(model_param_only=True)

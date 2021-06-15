@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*
+import random
 import copy
 from collections import OrderedDict
 import os
@@ -35,13 +36,32 @@ def filter(tensor, filter):
     return ifft
 
 
-def restrict_tensor(data, do=True):
+def restrict_tensor(data, do=False):
     if do:
         # return 1.0 * data/(torch.max(torch.abs(data)))
         # return data/10
         return torch.clip(data, -20, 20)
     else:
         return data
+
+
+def generate_perturbation_x1(patch_x, filter_x, patch_x_background, color_channel, dtype, x1, y1, x2, y2, requires_grad=False):
+    ifft = filter(patch_x[0,color_channel,:,:], filter_x)  # 进行高通滤波
+    perturbed_x_one_channel_mask = restrict_tensor(ifft.to(dtype))  # 限制值，转为整型
+    if not requires_grad:
+        patch_x_background[0][color_channel, y1:y2+1, x1:x2+1] = perturbed_x_one_channel_mask  # 前景模板施加到背景模板上
+    return patch_x_background[0][color_channel, :, :]
+
+
+def generate_perturbation_x(patch_x, filter_x, patch_x_background, color_channel, dtype, x1, y1, x2, y2, requires_grad=False):
+    ifft = filter(patch_x[0,color_channel,:,:], filter_x)  # 进行高通滤波
+    perturbed_x_one_channel_mask = restrict_tensor(ifft.to(dtype))  # 限制值，转为整型
+    return perturbed_x_one_channel_mask
+
+
+def apply_perturbation(search_img, perturbation, x1, y1, x2, y2):
+    search_img[y1:y2+1, x1:x2+1] += perturbation
+    return search_img
 
 
 @TRACK_TRAINERS.register
@@ -64,7 +84,7 @@ class RegularTrainer(TrainerBase):
         snapshot="",
     )
 
-    def __init__(self, optimizer, dataloader, monitors=[]):
+    def __init__(self, optimizer, dataloader, dataloader_uap, monitors=[]):
         r"""
         Crete tester with config and pipeline
 
@@ -76,7 +96,7 @@ class RegularTrainer(TrainerBase):
             PyTorch dataloader object. 
             Usage: batch_data = next(dataloader)
         """
-        super(RegularTrainer, self).__init__(optimizer, dataloader, monitors)
+        super(RegularTrainer, self).__init__(optimizer, dataloader, dataloader_uap, monitors)
         # update state
         self._state["epoch"] = -1  # uninitialized
         self._state["initialized"] = False
@@ -108,7 +128,7 @@ class RegularTrainer(TrainerBase):
         self.reg_weight = params['reg_weight']
         
         # 设定模板图像损失权重与学习率
-        self.l2_z_weight = 0.0005  # 希望模板图像 z 的扰动小，因此权重应该大。
+        self.l2_z_weight = 0.000  # 希望模板图像 z 的扰动小，因此权重应该大。
         self.lr_z = 0.5
 
         # 设定搜索图像损失权重与学习率
@@ -116,7 +136,7 @@ class RegularTrainer(TrainerBase):
             self.l2_x_weight = 0.00001  # 不用约束搜索补丁的值
             self.lr_x = 0.5
         else:
-            self.l2_x_weight = 0.0005  # 搜索图像的l2权重同样要大。因为希望x扰动小。
+            self.l2_x_weight = 0.000  # 搜索图像的l2权重同样要大。因为希望x扰动小。
             self.lr_x = 0.5  # 修改成和z一样
         self.optimize_mode = 'FGSM'
         """END：设定参数"""
@@ -160,8 +180,6 @@ class RegularTrainer(TrainerBase):
         self._state["pbar"] = pbar
         self._state["print_str"] = ""
 
-        training_data_raw = None
-
         time_dict = OrderedDict()
         for iteration, _ in enumerate(pbar):
             real_iter_num += 1
@@ -169,19 +187,14 @@ class RegularTrainer(TrainerBase):
             with Timer(name="data", output_dict=time_dict):
 
                 """START：获取 training data"""
-                if not signal_img_debug:
-                    if iteration == 0:
-                        training_data = next(self._dataloader)
-                        training_data_raw = training_data.copy()
-                    else:
-                        training_data = training_data_raw
-                else:
-                    training_data = next(self._dataloader)
-
-                if not signal_img_debug or training_data is None:
-                    training_data = next(self._dataloader)
-                if signal_img_debug:
-                    training_data_raw = training_data.copy()
+                # if random.random() > 0.5:
+                #     training_data = next(self._dataloader)
+                #     background = False
+                # else:
+                #     training_data = next(self._dataloader_uap)
+                #     background = True
+                training_data = next(self._dataloader)
+                background = False
                 """END：获取 training data"""
 
             training_data = move_data_to_device(training_data,
@@ -195,6 +208,7 @@ class RegularTrainer(TrainerBase):
 
                 """START：将扰动放至正确的显卡"""
                 patch_x = patch_x.to(self._state["devices"][0])
+                patch_x_background = params['patch_x_background'].to(self._state["devices"][0])
                 uap_z = uap_z.to(self._state["devices"][0])
                 filter_x = params['filter_x'].to(self._state["devices"][0])
                 filter_z = params['filter_z'].to(self._state["devices"][0])
@@ -203,6 +217,10 @@ class RegularTrainer(TrainerBase):
                 """START：设置扰动为可获取梯度"""
                 uap_z.requires_grad = True
                 patch_x.requires_grad = True
+                if background:
+                    patch_x_background.requires_grad = True
+                else:
+                    patch_x_background.requires_grad = False
                 """END：设置扰动为可获取梯度"""
 
                 """START：在搜索图像添加补丁"""
@@ -218,9 +236,8 @@ class RegularTrainer(TrainerBase):
                         elif params['phase'] == 'FFT':
                             dtype = training_data['im_x'][idx].dtype
                             for color_channel in range(3):
-                                ifft = filter(patch_x[0,color_channel,:,:], filter_x)
-                                perturbed_x_one_channel_mask = restrict_tensor(ifft.to(dtype))
-                                training_data['im_x'][idx, color_channel, y1:y2+1, x1:x2+1] += perturbed_x_one_channel_mask
+                                perturbed_x_one_channel_mask = generate_perturbation_x(patch_x, filter_x, patch_x_background, color_channel, dtype, x1, y1, x2, y2, background)
+                                training_data['im_x'][idx, color_channel, :, :] = apply_perturbation(training_data['im_x'][idx, color_channel, :, :], perturbed_x_one_channel_mask, x1, y1, x2, y2)
                         else:
                             assert False, params['phase']
                     except Exception as e:
@@ -280,6 +297,10 @@ class RegularTrainer(TrainerBase):
                     """START：收集相对于输入图像的梯度"""
                     im_z_grad = torch.mean(uap_z.grad.data, dim=0, keepdims=True)
                     patch_grad = torch.mean(patch_x.grad.data, dim=0, keepdims=True)
+                    if background:
+                        background_grad = torch.mean(patch_x_background.grad.data, dim=0, keepdim=True)
+                        patch_x_background = fgsm_attack(background_grad, patch_x_background, -self.lr_x)  # 对应的gt是真实目标。这里希望预测原理真实目标。
+                        patch_x_background = patch_x_background.detach()
                     """END：收集相对于输入图像的梯度"""
 
                     """START：根据梯度得到新的扰动"""
@@ -316,6 +337,10 @@ class RegularTrainer(TrainerBase):
             # self.writer.add_scalar('loss/reg_Loss', '{:.2f}'.format(reg_loss.item()), real_iter_num)
             # self.writer.add_scalar('iou', '{:.2f}'.format(trainer_data['extras']['reg']['iou'].item()), real_iter_num)
             # self.writer.flush()
+            if background:
+                print('background', end=' ')
+            else:
+                print('fake gt', end=' ')
             print('cls={:.2f}, ctr={:.2f}, reg={:.2f}, x_norm={:.2f}, z_norm={:.2f}, iou={:.2f}'.format(cls_loss.item(), ctr_loss.item(), reg_loss.item(), norm_x_loss.item(), norm_z_loss.item(), trainer_data['extras']['reg']['iou'].item()))
             """END：记录训练情况"""
 

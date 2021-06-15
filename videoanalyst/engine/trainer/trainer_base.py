@@ -33,7 +33,7 @@ class TrainerBase:
         max_epoch=20,
     )
 
-    def __init__(self, optimizer, dataloader, monitors=[]):
+    def __init__(self, optimizer, dataloader, dataloader_uap, monitors=[]):
         self._hyper_params = deepcopy(
             self.default_hyper_params)  # mapping-like object
         self._state = dict()  # pipeline state
@@ -42,6 +42,7 @@ class TrainerBase:
         self._optimizer = optimizer
         self._monitors = monitors
         self._dataloader = iter(dataloader)  # get the iterabel data loader
+        self._dataloader_uap = iter(dataloader_uap)
 
     def get_hps(self) -> Dict:
         r"""
