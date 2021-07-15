@@ -12,7 +12,7 @@ def visualize_uap(patch, name, root, num, phase):
     img = np.ascontiguousarray(patch[0].data.cpu().numpy().transpose(1, 2, 0))
     """START：计算 ssim"""
     if name == 'x':
-        base_303 = 127 * np.ones((303, 303, 3))
+        base_303 = 127 * np.ones((64, 64, 3))
         img_303 = base_303.copy()
         if phase == 'AP':
             img_303[:64,:64,:] = img
@@ -64,7 +64,7 @@ def vis_uap(root, num, phase):
 
 
 if __name__ == '__main__':
-    os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '3'
     root_ = '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_imperceptible_patch/64'
-    num_ = 8192
+    num_ = 4
     vis_uap(root_, num_, phase='64')

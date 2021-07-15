@@ -100,10 +100,7 @@ train:
         submodules:
           dataset:
             names: [
-              "COCODataset", 
               "GOT10kDataset", 
-              "VIDDataset",
-              "LaSOTDataset", 
               ]
             GOT10kDataset: &GOT10KDATASET_CFG
               ratio: 0.2

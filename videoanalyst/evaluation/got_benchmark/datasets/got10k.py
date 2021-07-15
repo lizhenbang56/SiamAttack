@@ -182,7 +182,10 @@ class GOT10k(object):
             logger.info(
                 "{}: passed cache file {} invalid, change to default cache path"
                 .format(GOT10k.__name__, cache_path))
-            cache_path = os.path.join(self.root_dir, self.subset + ".pkl")
+            if self.subset == 'train':
+                cache_path = os.path.join('/home/etvuz/projects/adversarial_attack/video_analyst_origin/logs/GOT-Benchmark/result/GOT-10k', self.subset + ".pkl")
+            else:
+                cache_path = os.path.join(self.root_dir, self.subset + ".pkl")
         return cache_path
 
     def _load_cache_for_current_subset(self, cache_path: str):
@@ -212,9 +215,10 @@ class GOT10k(object):
                                                        self.cache_path))
 
     def load_single_sequence(self, seq_dir):
+        video_name = seq_dir.split('/')[-1]
+        anno_path = os.path.join('/home/etvuz/projects/adversarial_attack/video_analyst_origin/logs/GOT-Benchmark/result/GOT-10k/siamfcpp_googlenet', video_name, video_name+'_001.txt')
         img_files = sorted(glob.glob(os.path.join(seq_dir, '*.jpg')))
-        anno = np.loadtxt(os.path.join(seq_dir, "groundtruth.txt"),
-                          delimiter=',')
+        anno = np.loadtxt(anno_path, delimiter=',')
 
         if self.subset == 'test' and anno.ndim == 1:
             assert len(anno) == 4

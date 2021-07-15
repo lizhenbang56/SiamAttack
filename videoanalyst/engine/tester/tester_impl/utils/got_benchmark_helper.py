@@ -114,7 +114,7 @@ class PipelineTracker(object):
 
             """START：定义可视化文件夹"""
             if f < 5 or f % 5 == 0:
-                visualize_flag = True
+                visualize_flag = False
             else:
                 visualize_flag = False
             if visualize_flag:

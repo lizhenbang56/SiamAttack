@@ -48,14 +48,9 @@ class ExperimentGOT10k(object):
             self.dataset = GOT10k(root_dir, subset=subset, list_file=list_file)
         
         """设置文件夹"""
-        if phase == 'eval':
-            self.result_dir = result_dir
-            self.report_dir = report_dir
-            self.fgt_dir = fgt_dir
-        else:
-            self.result_dir = os.path.join(result_dir, 'GOT-10k_Val')
-            self.report_dir = os.path.join(report_dir, 'GOT-10k_Val')
-            self.fgt_dir = os.path.join(fgt_dir, 'GOT-10k_Val')
+        self.result_dir = result_dir
+        self.report_dir = report_dir
+        self.fgt_dir = fgt_dir
         """设置文件夹"""
 
         self.nbins_iou = 101
@@ -237,7 +232,7 @@ class ExperimentGOT10k(object):
                             times[seq_name] = seq_times
 
                     # store sequence-wise performance
-                    ao, sr, speed, _ = self._evaluate(seq_ious, seq_times)
+                    ao, sr, speed, _ = self._evaluate(seq_ious, [])
                     performance[name]['seq_wise'].update({
                         seq_name: {
                             'ao': ao,

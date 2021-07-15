@@ -9,7 +9,7 @@ loop_num=2048
 patch_size=64
 dataset_name="GOT-10k_Val"  # "OTB_2015" "GOT-10k_Val"
 backbone="googlenet"  # "shufflenetv2x1_0"
-phase="UAP"
+phase="OURS"
 # 设置变量
 
 # 测试

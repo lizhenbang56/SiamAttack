@@ -199,7 +199,7 @@ class SiamFCppTracker(PipelineBase):
     def load_attack(self):
         if self.do_attack:
             """START：读入扰动"""
-            self.uap_root = '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_imperceptible_patch/{}'.format(self.save_name)
+            self.uap_root = '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_agent_GT/{}'.format(self.save_name)
             patch_x_path = os.path.join(self.uap_root, 'x_{}'.format(self.loop_num))
             uap_z_path = os.path.join(self.uap_root, 'z_{}'.format(self.loop_num))
             self.patch_x = torch.load(patch_x_path, map_location='cpu')
