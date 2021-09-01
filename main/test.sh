@@ -5,11 +5,11 @@ cd /home/etvuz/projects/adversarial_attack/video_analyst
 # 配置环境
 
 # 设置变量
-loop_num=2048
+loop_num=8192
 patch_size=64
-dataset_name="GOT-10k_Val"  # "OTB_2015" "GOT-10k_Val"
+dataset_name="OTB_2015"  # "OTB_2015" "GOT-10k_Val"
 backbone="googlenet"  # "shufflenetv2x1_0"
-phase="UAP"
+phase="OURS"
 # 设置变量
 
 # 测试

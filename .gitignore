@@ -1,6 +1,6 @@
 snapshots_small_patch/
 snapshots_imperceptible_patch/
-
+snapshots_agent_GT/
 model_store
 *.swp
 *.swo
