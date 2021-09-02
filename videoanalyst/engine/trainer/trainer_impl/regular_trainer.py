@@ -9,6 +9,7 @@ from torch import nn
 from torch.utils.tensorboard import SummaryWriter
 from videoanalyst.utils import (Timer, move_data_to_device)
 from videoanalyst.utils.visualize_training import visualize_training, visualize_patched_img
+from videoanalyst.utils.bgr_ycbcr import bgr2ycbcr_pytorch, ycbcr2bgr_pytorch
 from ..trainer_base import TRACK_TRAINERS, TrainerBase
 
 
@@ -151,19 +152,9 @@ class RegularTrainer(TrainerBase):
             with Timer(name="data", output_dict=time_dict):
 
                 """START：获取 training data"""
-                if not signal_img_debug:
-                    if iteration == 0:
-                        training_data = next(self._dataloader)
-                        training_data_raw = training_data.copy()
-                    else:
-                        training_data = training_data_raw
-                else:
-                    training_data = next(self._dataloader)
-
-                if not signal_img_debug or training_data is None:
-                    training_data = next(self._dataloader)
-                if signal_img_debug:
-                    training_data_raw = training_data.copy()
+                training_data = next(self._dataloader)
+                training_data['im_x'] = bgr2ycbcr_pytorch(trainer_data['im_x'])
+                training_data['im_z'] = bgr2ycbcr_pytorch(trainer_data['im_z'])
                 """END：获取 training data"""
 
             training_data = move_data_to_device(training_data,
@@ -189,12 +180,8 @@ class RegularTrainer(TrainerBase):
                 for idx, xyxy in enumerate(training_data['bbox_x']):
                     x1, y1, x2, y2 = [int(var) for var in xyxy]  # 补丁在搜索图像上的位置
                     try:
-                        if params['phase'] == 'Ours':
-                            training_data['im_x'][idx, :, y1:y2+1, x1:x2+1] += patch_x[0]  # 不缩放补丁，相加操作，希望不可感知
-                        elif params['phase'] == 'AP':
-                            training_data['im_x'][idx, :, y1:y2+1, x1:x2+1] = patch_x[0]
-                        elif params['phase'] == 'UAP':
-                            training_data['im_x'][idx] += patch_x[0]
+                        if params['phase'] == 'OURS':
+                            training_data['im_x'][idx, 1:, y1:y2+1, x1:x2+1] += patch_x[0,1:,:,:]  # 仅扰动CbCr
                         else:
                             assert False, params['phase']
                     except Exception as e:
@@ -205,8 +192,13 @@ class RegularTrainer(TrainerBase):
                 """END：在搜索图像添加补丁"""
 
                 """START：将扰动叠加至输入图像"""
-                training_data['im_z'] = uap_z + training_data['im_z'].data
+                training_data['im_z'][:,1:,:,:] = uap_z[:,1:,:,:] + training_data['im_z'].data[:,1:,:,:]
                 """END：将扰动叠加至输入图像"""
+
+                """YCbCr转为BGR"""
+                training_data['im_z'] = ycbcr2bgr_pytorch(training_data['im_z'])
+                training_data['im_x'] = ycbcr2bgr_pytorch(training_data['im_x'])
+                """YCbCr转为BGR"""
 
                 """START：网络前向传播"""
                 self._model.eval()  # !!!非常重要。否则造成训练测试不一致。我们根本不训练网络。

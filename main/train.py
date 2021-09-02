@@ -47,7 +47,7 @@ def make_parser():
     parser.add_argument('--reg_weight', default=1.0, type=float)
     parser.add_argument('--patch_size', type=int, default=64)
     parser.add_argument('--gpu_id', type=str, default='1,2,3')
-    parser.add_argument('--phase', type=str, default='UAP')
+    parser.add_argument('--phase', type=str, default='OURS')
     return parser
 
 
