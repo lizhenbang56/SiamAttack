@@ -19,7 +19,7 @@ from videoanalyst.utils import complete_path_wt_root_in_cfg
 def make_parser():
     parser = argparse.ArgumentParser(description='Test')
     parser.add_argument('--dataset_name', type=str, default='GOT-10k_Val')  # 'GOT-10k_Val' 'OTB_2015' 'LaSOT'
-    parser.add_argument('--loop_num', type=int, default=512)
+    parser.add_argument('--loop_num', type=int, default=256)
     parser.add_argument('--do_attack', type=str, default='true')
     parser.add_argument('--trainset', default='fulldata', type=str)
     parser.add_argument('--optimize_mode', default='FGSM', type=str)
