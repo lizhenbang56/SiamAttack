@@ -3,30 +3,40 @@ import numpy as np
 
 
 def rgb2ycbcr(im):
-    xform = np.array([[.299, .587, .114], [-.1687, -.3313, .5], [.5, -.4187, -.0813]])
-    ycbcr = im.dot(xform.T)
-    ycbcr[:,:,[1,2]] += 128
-    return np.uint8(ycbcr)
-
+    im = im.astype(np.float64)
+    cbcr = np.empty_like(im)
+    r = im[:,:,0]
+    g = im[:,:,1]
+    b = im[:,:,2]
+    # Y
+    cbcr[:,:,0] = .299 * r + .587 * g + .114 * b
+    # Cb
+    cbcr[:,:,1] = 128 - .169 * r - .331 * g + .5 * b
+    # Cr
+    cbcr[:,:,2] = 128 + .5 * r - .419 * g - .081 * b
+    return np.uint8(cbcr)
 
 def ycbcr2rgb(im):
-    xform = np.array([[1, 0, 1.402], [1, -0.34414, -.71414], [1, 1.772, 0]])
-    rgb = im.astype(np.float)
-    rgb[:,:,[1,2]] -= 128
-    rgb = rgb.dot(xform.T)
-    np.putmask(rgb, rgb > 255, 255)
-    np.putmask(rgb, rgb < 0, 0)
+    im = im.astype(np.float64)
+    rgb = np.empty_like(im)
+    y   = im[:,:,0]
+    cb  = im[:,:,1] - 128
+    cr  = im[:,:,2] - 128
+    # R
+    rgb[:,:,0] = y + 1.402 * cr
+    # G
+    rgb[:,:,1] = y - .34414 * cb - .71414 * cr
+    # B
+    rgb[:,:,2] = y + 1.772 * cb
+    rgb[rgb>255] = 255
+    rgb[rgb<0] = 0
     return np.uint8(rgb)
 
 
 def main():
     img = cv2.imread('/home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/snapshots_imperceptible_patch/64/visualization/256/GOT-10k_Val/GOT-10k_Val_000001/2_clean_search_img.jpg')
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    ycbcr = rgb2ycbcr(img).astype(np.float)
-    h, w, _ = ycbcr.shape
-    ycbcr[:,:,:2] += np.random.randint(-100, 100, size=(h,w,2), dtype=np.int).astype(np.float)
-    ycbcr[ycbcr>255] = 255
-    ycbcr[ycbcr<0] = 0
+    ycbcr = rgb2ycbcr(img)
     img = ycbcr2rgb(ycbcr)
     img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     assert cv2.imwrite('/tmp/YCb.jpg', img)
