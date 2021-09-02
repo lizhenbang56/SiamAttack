@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from copy import deepcopy
 from typing import Dict, List, Tuple
-
+import cv2
 import numpy as np
 from loguru import logger
 from PIL import Image
@@ -74,6 +74,12 @@ class TrackPairSampler(SamplerBase):
                 data1, data2 = self._sample_track_pair()
             data1["image"] = load_image(data1["image"])
             data2["image"] = load_image(data2["image"])
+
+            """通道顺序转换：BGR2RGB"""
+            data1["image"] = cv2.cvtColor(data1["image"], cv2.COLOR_BGR2RGB)
+            data2["image"] = cv2.cvtColor(data2["image"], cv2.COLOR_BGR2RGB)
+            """通道顺序转换：BGR2RGB"""
+
             sample_try_num += 1
         sampled_data = dict(
             data1=data1,

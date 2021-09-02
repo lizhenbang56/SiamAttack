@@ -12,6 +12,107 @@ from videoanalyst.utils.visualize_training import visualize_training, visualize_
 from ..trainer_base import TRACK_TRAINERS, TrainerBase
 
 
+class BGR_HSV(nn.Module):
+    """
+    Pytorch implementation of BGR convert to HSV, and HSV convert to BGR,
+    BGR or HSV's shape: (B * C * H * W)
+    HSV's range: [0, 1)
+    BGR's range: [0, 255]
+    """
+    def __init__(self, eps=1e-8):
+        super(BGR_HSV, self).__init__()
+        self.eps = eps
+
+    def rgb_to_hsv(self, img):
+        """将0~255的RGB转为0~1的RGB"""
+        img = img / 255
+        """将0~255的RGB转为0~1的RGB"""
+
+        hue = torch.Tensor(img.shape[0], img.shape[2],
+                           img.shape[3]).to(img.device)
+
+        hue[img[:, 2] == img.max(1)[0]] = 4.0 + ((img[:, 0]-img[:, 1]) / (
+            img.max(1)[0] - img.min(1)[0] + self.eps))[img[:, 2] == img.max(1)[0]]
+        hue[img[:, 1] == img.max(1)[0]] = 2.0 + ((img[:, 2]-img[:, 0]) / (
+            img.max(1)[0] - img.min(1)[0] + self.eps))[img[:, 1] == img.max(1)[0]]
+        hue[img[:, 0] == img.max(1)[0]] = (0.0 + ((img[:, 1]-img[:, 2]) / (
+            img.max(1)[0] - img.min(1)[0] + self.eps))[img[:, 0] == img.max(1)[0]]) % 6
+
+        hue[img.min(1)[0] == img.max(1)[0]] = 0.0
+        hue = hue/6
+
+        saturation = (img.max(1)[0] - img.min(1)[0]) / \
+            (img.max(1)[0] + self.eps)
+        saturation[img.max(1)[0] == 0] = 0
+
+        value = img.max(1)[0]
+
+        hue = hue.unsqueeze(1)
+        saturation = saturation.unsqueeze(1)
+        value = value.unsqueeze(1)
+        hsv = torch.cat([hue, saturation, value], dim=1)
+        return hsv
+
+    def hsv_to_bgr(self, hsv):
+        """
+        return
+            bgr: 0~255
+        """
+        h, s, v = hsv[:, 0, :, :], hsv[:, 1, :, :], hsv[:, 2, :, :]
+        # 对出界值的处理
+        h = h % 1
+        s = torch.clamp(s, 0, 1)
+        v = torch.clamp(v, 0, 1)
+
+        r = torch.zeros_like(h)
+        g = torch.zeros_like(h)
+        b = torch.zeros_like(h)
+
+        hi = torch.floor(h * 6)
+        f = h * 6 - hi
+        p = v * (1 - s)
+        q = v * (1 - (f * s))
+        t = v * (1 - ((1 - f) * s))
+
+        hi0 = hi == 0
+        hi1 = hi == 1
+        hi2 = hi == 2
+        hi3 = hi == 3
+        hi4 = hi == 4
+        hi5 = hi == 5
+
+        r[hi0] = v[hi0]
+        g[hi0] = t[hi0]
+        b[hi0] = p[hi0]
+
+        r[hi1] = q[hi1]
+        g[hi1] = v[hi1]
+        b[hi1] = p[hi1]
+
+        r[hi2] = p[hi2]
+        g[hi2] = v[hi2]
+        b[hi2] = t[hi2]
+
+        r[hi3] = p[hi3]
+        g[hi3] = q[hi3]
+        b[hi3] = v[hi3]
+
+        r[hi4] = t[hi4]
+        g[hi4] = p[hi4]
+        b[hi4] = v[hi4]
+
+        r[hi5] = v[hi5]
+        g[hi5] = p[hi5]
+        b[hi5] = q[hi5]
+
+        r = r.unsqueeze(1)
+        g = g.unsqueeze(1)
+        b = b.unsqueeze(1)
+        bgr = torch.cat([b, g, r], dim=1)
+        bgr = bgr * 255
+        return bgr
+
+
 def fgsm_attack(uap, data_grad, epsilon):
     sign_data_grad = data_grad.sign()
     new_uap = uap - epsilon*sign_data_grad
@@ -63,6 +164,7 @@ class RegularTrainer(TrainerBase):
         self._state["epoch"] = -1  # uninitialized
         self._state["initialized"] = False
         self._state["devices"] = torch.device("cuda:0")
+        self.convertor = BGR_HSV()
 
     def init_train(self, ):
         torch.cuda.empty_cache()
@@ -142,8 +244,6 @@ class RegularTrainer(TrainerBase):
         self._state["pbar"] = pbar
         self._state["print_str"] = ""
 
-        training_data_raw = None
-
         time_dict = OrderedDict()
         for iteration, _ in enumerate(pbar):
             real_iter_num += 1
@@ -151,20 +251,13 @@ class RegularTrainer(TrainerBase):
             with Timer(name="data", output_dict=time_dict):
 
                 """START：获取 training data"""
-                if not signal_img_debug:
-                    if iteration == 0:
-                        training_data = next(self._dataloader)
-                        training_data_raw = training_data.copy()
-                    else:
-                        training_data = training_data_raw
-                else:
-                    training_data = next(self._dataloader)
-
-                if not signal_img_debug or training_data is None:
-                    training_data = next(self._dataloader)
-                if signal_img_debug:
-                    training_data_raw = training_data.copy()
+                training_data = next(self._dataloader)
                 """END：获取 training data"""
+
+                """将BGR转为HSV"""
+                training_data['im_x'] = self.convertor.rgb_to_hsv(training_data['im_x'])
+                training_data['im_z'] = self.convertor.rgb_to_hsv(training_data['im_z'])
+                """将BGR转为HSV"""
 
             training_data = move_data_to_device(training_data,
                                                 self._state["devices"][0])
@@ -189,12 +282,8 @@ class RegularTrainer(TrainerBase):
                 for idx, xyxy in enumerate(training_data['bbox_x']):
                     x1, y1, x2, y2 = [int(var) for var in xyxy]  # 补丁在搜索图像上的位置
                     try:
-                        if params['phase'] == 'Ours':
-                            training_data['im_x'][idx, :, y1:y2+1, x1:x2+1] += patch_x[0]  # 不缩放补丁，相加操作，希望不可感知
-                        elif params['phase'] == 'AP':
-                            training_data['im_x'][idx, :, y1:y2+1, x1:x2+1] = patch_x[0]
-                        elif params['phase'] == 'UAP':
-                            training_data['im_x'][idx] += patch_x[0]
+                        if params['phase'] == 'OURS':
+                            training_data['im_x'][idx, 1:, y1:y2+1, x1:x2+1] += patch_x[0, 1:, :, :]
                         else:
                             assert False, params['phase']
                     except Exception as e:
@@ -205,8 +294,13 @@ class RegularTrainer(TrainerBase):
                 """END：在搜索图像添加补丁"""
 
                 """START：将扰动叠加至输入图像"""
-                training_data['im_z'] = uap_z + training_data['im_z'].data
+                training_data['im_z'][:, 1:, :, :] = uap_z[:, 1:, :, :] + training_data['im_z'].data[:, 1:, :, :]
                 """END：将扰动叠加至输入图像"""
+
+                """扰动HSV后，转换为BGR"""
+                training_data['im_x'] = self.convertor.hsv_to_bgr(training_data['im_x'])
+                training_data['im_z'] = self.convertor.hsv_to_bgr(training_data['im_z'])
+                """扰动HSV后，转换为BGR"""
 
                 """START：网络前向传播"""
                 self._model.eval()  # !!!非常重要。否则造成训练测试不一致。我们根本不训练网络。

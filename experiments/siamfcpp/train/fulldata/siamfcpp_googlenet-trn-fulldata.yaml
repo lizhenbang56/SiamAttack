@@ -47,7 +47,7 @@ train:
   track:
     exp_name: &TRAIN_NAME "siamfcpp_googlenet-fulldata"
     exp_save: &TRAIN_SAVE "snapshots"
-    num_processes: 3
+    num_processes: 1
     model:
       backbone:
         name: "Inception3"
@@ -87,8 +87,8 @@ train:
       exp_name: *TRAIN_NAME
       exp_save: *TRAIN_SAVE
       num_epochs: &NUM_EPOCHS 2000000
-      minibatch: &MINIBATCH 96
-      num_workers: 16 # 32
+      minibatch: &MINIBATCH 4
+      num_workers: 1 # 32
       nr_image_per_epoch: &NR_IMAGE_PER_EPOCH 1500000000
       pin_memory: false
       datapipeline:
