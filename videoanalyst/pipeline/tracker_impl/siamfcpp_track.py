@@ -3,9 +3,9 @@
 from copy import deepcopy
 import os
 import numpy as np
-
+import cv2
 import torch
-
+from videoanalyst.utils.bgr_hsv import BGR_HSV
 from videoanalyst.pipeline.pipeline_base import TRACK_PIPELINES, PipelineBase
 from videoanalyst.pipeline.utils import (cxywh2xywh, get_crop, xyxy2xywh,
                                          get_subwindow_tracking,
@@ -119,6 +119,7 @@ class SiamFCppTracker(PipelineBase):
         self.device = torch.device("cpu")
         self.debug = False
         self.set_model(self._model)
+        self.convertor = BGR_HSV()
 
     def set_model(self, model):
         """model to be set to pipeline. change device & turn it into eval mode
@@ -181,12 +182,24 @@ class SiamFCppTracker(PipelineBase):
         )
         phase = self._hyper_params['phase_init']
         with torch.no_grad():
-            data = imarray_to_tensor(im_z_crop).to(self.device)
+            """BGR转RGB"""
+            im_z_crop_rgb = cv2.cvtColor(im_z_crop, cv2.COLOR_BGR2RGB)
+            """BGR转RGB"""
 
+            data = imarray_to_tensor(im_z_crop_rgb).to(self.device)
+
+            """模板图像RGB转HSV"""
+            data = self.convertor.rgb_to_hsv(data)
+            """模板图像RGB转HSV"""
+            
             """START：添加扰动"""
             if self.do_attack:
                 data += self.uap_z.to(self.device)
             """END：添加扰动"""
+
+            """模板图像HSV转BGR"""
+            data = self.convertor.hsv_to_bgr(data)
+            """模板图像HSV转BGR"""
 
             """START：保存模板图像"""
             self._state['adv_template_img'] = np.ascontiguousarray(data[0].cpu().numpy().transpose(1, 2, 0))
@@ -197,9 +210,9 @@ class SiamFCppTracker(PipelineBase):
         return features, im_z_crop, avg_chans
 
     def load_attack(self):
+        self.uap_root = '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_imperceptible_patch/{}'.format(self.save_name)
         if self.do_attack:
             """START：读入扰动"""
-            self.uap_root = '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_imperceptible_patch/{}'.format(self.save_name)
             patch_x_path = os.path.join(self.uap_root, 'x_{}'.format(self.loop_num))
             uap_z_path = os.path.join(self.uap_root, 'z_{}'.format(self.loop_num))
             self.patch_x = torch.load(patch_x_path, map_location='cpu')
@@ -318,19 +331,35 @@ class SiamFCppTracker(PipelineBase):
             self._state['fgt_xyxy_ori'] = [fgt_x1_ori, fgt_y1_ori, fgt_x2_ori, fgt_y2_ori]
             self._state['fgt_xyxy_search'] = [x1, y1, x1+w, y1+h]
             """START：得到补丁相对于搜索图像的位置"""
+        else:
+            self._state['fgt_xyxy_ori'] = [10, 10, 20, 20]
+            self._state['gt_xyxy'] = [10, 10, 20, 20]
+            self._state['fgt_xyxy_search'] = [10, 10, 20, 20]
 
         """START：在搜索图像添加对抗补丁（不进行缩放）"""
-        data = imarray_to_tensor(im_x_crop).to(self.device)  # [1,3,h,w]
+        
+        """BGR2RGB"""
+        im_x_crop_rgb = cv2.cvtColor(im_x_crop, cv2.COLOR_BGR2RGB)
+        """BGR2RGB"""
+        
+        data = imarray_to_tensor(im_x_crop_rgb).to(self.device)  # [1,3,h,w]
         if self.do_attack:
             try:
+                """搜索图像RGB转HSV"""
+                data = self.convertor.rgb_to_hsv(data)
+                """搜索图像RGB转HSV"""
+
+                """在搜索图像添加扰动"""
                 if self.phase == 'OURS':
                     data[0, :, y1:y1+h, x1:x1+w] += self.patch_x.to(self.device)[0]  # 添加而不是粘贴
-                elif self.phase == 'AP':
-                    data[0, :, y1:y1+h, x1:x1+w] = self.patch_x.to(self.device)[0]
-                elif self.phase == 'UAP':
-                    data += self.patch_x.to(self.device)[0]
                 else:
                     assert False, self.phase
+                """在搜索图像添加扰动"""
+
+                """搜索图像HSV转BGR"""
+                data = self.convertor.hsv_to_bgr(data)
+                """搜索图像HSV转BGR"""
+
             except Exception:
                 print('bad prediction')
         """END：在搜索图像添加对抗补丁（不进行缩放）"""
