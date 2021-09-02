@@ -35,10 +35,8 @@ def ycbcr2bgr(im):
 
 def main():
     img = cv2.imread('/home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/snapshots_imperceptible_patch/64/visualization/256/GOT-10k_Val/GOT-10k_Val_000001/2_clean_search_img.jpg')
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     ycbcr = bgr2ycbcr(img)
     img = ycbcr2bgr(ycbcr)
-    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     assert cv2.imwrite('/tmp/YCb.jpg', img)
 
 
