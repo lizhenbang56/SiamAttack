@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*
+import sys
 import copy
 from collections import OrderedDict
 import os
@@ -93,7 +94,7 @@ class RegularTrainer(TrainerBase):
         
         # 设定模板图像损失权重与学习率
         self.l2_z_weight = 0.005  # 希望模板图像 z 的扰动小，因此权重应该大。
-        self.lr_z = 0.0001
+        self.lr_z = 0.1
 
         # 设定搜索图像损失权重与学习率
         if params['phase'] == 'AP':
@@ -101,7 +102,7 @@ class RegularTrainer(TrainerBase):
             self.lr_x = 0.5
         else:
             self.l2_x_weight = 0.005  # 搜索图像的l2权重同样要大。因为希望x扰动小。
-            self.lr_x = 0.0001  # 修改成和z一样
+            self.lr_x = 0.1  # 修改成和z一样
         self.optimize_mode = 'FGSM'
         """END：设定参数"""
 
@@ -123,7 +124,7 @@ class RegularTrainer(TrainerBase):
 
         """START：设置保存路径"""
         print(self.save_name)
-        save_dir = os.path.join('/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_imperceptible_patch', self.save_name)
+        save_dir = os.path.join(sys.path[0], 'snapshots_imperceptible_patch', self.save_name)
         if signal_img_debug:
             save_dir = '/tmp/uap_debug'
         self.writer = SummaryWriter(save_dir)
