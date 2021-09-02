@@ -343,12 +343,13 @@ class SiamFCppTracker(PipelineBase):
         """BGR2RGB"""
         
         data = imarray_to_tensor(im_x_crop_rgb).to(self.device)  # [1,3,h,w]
+        
+        """搜索图像RGB转HSV"""
+        data = self.convertor.rgb_to_hsv(data)
+        """搜索图像RGB转HSV"""
+        
         if self.do_attack:
             try:
-                """搜索图像RGB转HSV"""
-                data = self.convertor.rgb_to_hsv(data)
-                """搜索图像RGB转HSV"""
-
                 """在搜索图像添加扰动"""
                 if self.phase == 'OURS':
                     data[0, :, y1:y1+h, x1:x1+w] += self.patch_x.to(self.device)[0]  # 添加而不是粘贴
@@ -356,13 +357,13 @@ class SiamFCppTracker(PipelineBase):
                     assert False, self.phase
                 """在搜索图像添加扰动"""
 
-                """搜索图像HSV转BGR"""
-                data = self.convertor.hsv_to_bgr(data)
-                """搜索图像HSV转BGR"""
-
             except Exception:
                 print('bad prediction')
         """END：在搜索图像添加对抗补丁（不进行缩放）"""
+
+        """搜索图像HSV转BGR"""
+        data = self.convertor.hsv_to_bgr(data)
+        """搜索图像HSV转BGR"""
 
         with torch.no_grad():
             score, box, cls, ctr, extra = self._model(

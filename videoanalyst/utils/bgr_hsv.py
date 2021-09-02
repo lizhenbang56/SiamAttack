@@ -8,7 +8,7 @@ class BGR_HSV(nn.Module):
     """
     Pytorch implementation of BGR convert to HSV, and HSV convert to BGR,
     BGR or HSV's shape: (B * C * H * W)
-    HSV's range: [0, 1)
+    HSV's range: [0, 1) 一定要注意，HSV的最大值是1.
     BGR's range: [0, 255]
     """
     def __init__(self, eps=1e-8):
