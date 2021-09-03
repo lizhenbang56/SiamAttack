@@ -30,7 +30,7 @@ def get_patch_grad(tensor, pos, patch_w, patch_h):
 def filter(tensor, filter):
     fft = torch.fft.fft2(tensor)  # 把扰动图像转到频域
     fft_center = torch.fft.fftshift(fft)  # 把低频移到中央
-    fft_center_mask = filter * fft_center  # 滤波
+    fft_center_mask = fft_center  # 滤波
     ifftshift = torch.fft.ifftshift(fft_center_mask)  # 进行反平移
     ifft = torch.fft.ifft2(ifftshift)  # 变回图像
     return ifft
@@ -236,7 +236,7 @@ class RegularTrainer(TrainerBase):
                         elif params['phase'] == 'FFT':
                             dtype = training_data['im_x'][idx].dtype
                             for color_channel in range(3):
-                                perturbed_x_one_channel_mask = generate_perturbation_x(patch_x, filter_x, patch_x_background, color_channel, dtype, x1, y1, x2, y2, background)
+                                perturbed_x_one_channel_mask = generate_perturbation_x(patch_x, filter_x, color_channel, dtype, x1, y1, x2, y2, background)
                                 training_data['im_x'][idx, color_channel, :, :] = apply_perturbation(training_data['im_x'][idx, color_channel, :, :], perturbed_x_one_channel_mask, x1, y1, x2, y2)
                         else:
                             assert False, params['phase']

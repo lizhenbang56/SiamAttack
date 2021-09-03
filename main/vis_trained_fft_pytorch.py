@@ -3,8 +3,7 @@ import cv2
 import os
 import torch
 from paths import ROOT_PATH
-from videoanalyst.pipeline.tracker_impl.siamfcpp_track import generate_gaussian
-from videoanalyst.engine.trainer.trainer_impl.regular_trainer import restrict_tensor
+from videoanalyst.engine.trainer.trainer_impl.regular_trainer import restrict_tensor, generate_perturbation_x, apply_perturbation
 
 
 
@@ -20,12 +19,11 @@ def visualize_template_img(adv_template_img, save_name):
     return
 
 
-def generate_gaussian_tensor(size):
-    mask_np = generate_gaussian(size)
-    return torch.from_numpy(mask_np)
-
-
 def load_img_tensor(video_name, img_name):
+    """
+    return
+        img_tensor: BCHW
+    """
     img_path = '/home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/datasets/GOT-10k/val/GOT-10k_Val_000003/00000001.jpg'
     img_np = cv2.imread(img_path)
     img_tensor = torch.from_numpy(img_np.transpose(2,0,1)).unsqueeze(0).to(torch.float32)
@@ -38,40 +36,14 @@ def load_perturbation_fft_tensor(x_or_z, loop_num):
     return perturbation_fft_tensor
 
 
-def save_fft(fft, name):
-    log_fft = np.log(1 + np.abs(fft)) * 20
-    cv2.imwrite('/tmp/0_{}.jpg'.format(name), log_fft.astype(np.uint8))
-
-
-def vis_fft(filter, fft):
-    """可视化频域图
-    data: 2d tensor
-    """
-    filter = filter.numpy()
-    fft2 = fft.cpu().data.numpy()
-    shift2center = np.fft.fftshift(fft2)
-    save_fft(shift2center, 'shift')
-    masked_fft = filter * shift2center
-    save_fft(masked_fft, 'masked_fft')
-    assert cv2.imwrite('/tmp/0_mask.jpg', (filter*255).astype(np.uint8))
-    return
-
 
 def main():
     img_tensor = load_img_tensor(video_name='GOT-10k_Val_000001', img_name='2_clean_search_img')
-    perturbation_fft_tensor = load_perturbation_fft_tensor(x_or_z='x', loop_num=512)
-    visualize_template_img(perturbation_fft_tensor+128, save_name='raw_perturbation')
-    filter = generate_gaussian_tensor(64)
+    perturbation_fft_tensor = load_perturbation_fft_tensor(x_or_z='x', loop_num=256)
     for color_channel in range(3):
-        perturbed_z_one_channel = torch.fft.fft2(perturbation_fft_tensor[0, color_channel, :, :])
-        vis_fft(filter, perturbed_z_one_channel)
-        perturbed_z_one_channel_mask = restrict_tensor(torch.fft.ifft2(torch.fft.ifftshift(filter *     perturbed_z_one_channel)).to(torch.float32))
-        no_mask =                      restrict_tensor(torch.fft.ifft2(torch.fft.ifftshift(             perturbed_z_one_channel)).to(torch.float32))
-        sub_mask =                     restrict_tensor(torch.fft.ifft2(torch.fft.ifftshift((1-filter) * perturbed_z_one_channel)).to(torch.float32))
-        visualize_template_img(perturbed_z_one_channel_mask+128, 'masked_perturbation')
-        visualize_template_img(no_mask+128,            save_name='no_mask')
-        visualize_template_img(sub_mask+128,           save_name='sub_mask')
-        img_tensor[:, color_channel, 64:128, 64:128] = perturbed_z_one_channel_mask.unsqueeze(0) + img_tensor[:, color_channel, 64:128, 64:128].data
+        dtype = img_tensor.dtype
+        perturbed_x_one_channel_mask = generate_perturbation_x(perturbation_fft_tensor, None, color_channel, dtype, None, None, None, None, requires_grad=False)
+        img_tensor[0, color_channel, :, :] = apply_perturbation(img_tensor[0, color_channel, :, :], perturbed_x_one_channel_mask, 1, 1, 64, 64)
     visualize_template_img(img_tensor, 'final')
 
 
