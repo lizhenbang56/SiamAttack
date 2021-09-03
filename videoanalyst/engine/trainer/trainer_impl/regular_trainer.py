@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*
+import sys
 import copy
 from collections import OrderedDict
 import os
@@ -121,7 +122,7 @@ class RegularTrainer(TrainerBase):
 
         """START：设置保存路径"""
         print(self.save_name)
-        save_dir = os.path.join('/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_imperceptible_patch', self.save_name)
+        save_dir = os.path.join(sys.path[0], 'snapshots_imperceptible_patch', self.save_name)
         if signal_img_debug:
             save_dir = '/tmp/uap_debug'
         self.writer = SummaryWriter(save_dir)
@@ -189,7 +190,7 @@ class RegularTrainer(TrainerBase):
                 for idx, xyxy in enumerate(training_data['bbox_x']):
                     x1, y1, x2, y2 = [int(var) for var in xyxy]  # 补丁在搜索图像上的位置
                     try:
-                        if params['phase'] == 'Ours':
+                        if params['phase'] == 'OURS':
                             training_data['im_x'][idx, :, y1:y2+1, x1:x2+1] += patch_x[0]  # 不缩放补丁，相加操作，希望不可感知
                         elif params['phase'] == 'AP':
                             training_data['im_x'][idx, :, y1:y2+1, x1:x2+1] = patch_x[0]
