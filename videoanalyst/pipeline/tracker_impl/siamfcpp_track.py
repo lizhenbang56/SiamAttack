@@ -292,8 +292,8 @@ class SiamFCppTracker(PipelineBase):
             patch_gt_y2_ori = patch_gt_y1_ori + patch_gt_h_ori
             
             # 将补丁在原图上的位置转换为在搜索图像上的位置
-            w = self.patch_x_Y.shape[2]
-            h = self.patch_x_Y.shape[3]
+            w = self.patch_x_CbCr.shape[2]
+            h = self.patch_x_CbCr.shape[3]
             x1, y1 = _point_from_original_img_to_search_img([patch_gt_x1_ori, patch_gt_y1_ori], target_pos, scale_x, x_size)
             real_x2, real_y2 = _point_from_original_img_to_search_img([patch_gt_x2_ori, patch_gt_y2_ori], target_pos, scale_x, x_size)
             self._state['gt_xyxy'] = [x1, y1, real_x2, real_y2]
@@ -331,8 +331,8 @@ class SiamFCppTracker(PipelineBase):
         if self.do_attack:
             try:
                 if self.phase == 'OURS':
-                    data[0, 0, y1:y1+h, x1:x1+w] += self.patch_x_Y[0, 0].to(self.device)
-                    data[0, 1:, :, :] += self.patch_x_CbCr[0].to(self.device)
+                    data[0, 0, :, :] += self.patch_x_Y[0, 0].to(self.device)
+                    data[0, 1:, y1:y1+h, x1:x1+w] += self.patch_x_CbCr[0].to(self.device)
                 elif self.phase == 'AP':
                     data[0, :, y1:y1+h, x1:x1+w] = self.patch_x.to(self.device)[0]
                 elif self.phase == 'UAP':

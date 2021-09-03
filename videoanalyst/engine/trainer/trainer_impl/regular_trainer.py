@@ -184,8 +184,8 @@ class RegularTrainer(TrainerBase):
                     x1, y1, x2, y2 = [int(var) for var in xyxy]  # 补丁在搜索图像上的位置
                     try:
                         if params['phase'] == 'OURS':
-                            training_data['im_x'][idx, 1:, :, :] += patch_x_CbCr[0]  # 仅扰动CbCr
-                            training_data['im_x'][idx, 0, y1:y2+1, x1:x2+1] += patch_x_Y[0, 0]  # 仅扰动Y
+                            training_data['im_x'][idx, 1:, y1:y2+1, x1:x2+1] += patch_x_CbCr[0]  # 仅扰动CbCr
+                            training_data['im_x'][idx, 0, :, :] += patch_x_Y[0, 0]  # 仅扰动Y
                         else:
                             assert False, params['phase']
                     except Exception as e:
@@ -219,7 +219,7 @@ class RegularTrainer(TrainerBase):
                 for loss_name, loss in self._losses.items():
                     training_losses[loss_name], extras[loss_name] = loss(
                         predict_data, training_data)
-                norm_x_loss = torch.mean(patch_x_Y.pow(2))
+                norm_x_loss = torch.mean(patch_x_CbCr.pow(2))
                 norm_z_loss = torch.mean(uap_z.pow(2))
                 cls_loss = training_losses['cls']
                 ctr_loss = training_losses['ctr']
@@ -228,7 +228,7 @@ class RegularTrainer(TrainerBase):
                              self.ctr_weight*ctr_loss + \
                              self.reg_weight*reg_loss + \
                              self.l2_z_weight*norm_z_loss + \
-                             self.l2_x_weight*norm_x_loss
+                             self.l2_x_weight*norm_x_loss * 4
                 """END：计算损失"""
 
                 """START：模型梯度清空"""

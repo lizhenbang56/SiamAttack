@@ -122,8 +122,8 @@ if __name__ == '__main__':
     if not parsed_args.uap_resume:
         uap_z = torch.zeros((1, 3, 127, 127))
         if parsed_args.phase == 'OURS':
-            patch_x_Y = torch.zeros(1, 1, parsed_args.patch_size, parsed_args.patch_size)
-            patch_x_CbCr = torch.zeros(1, 2, 303, 303)
+            patch_x_Y = torch.zeros(1, 1, 303, 303)
+            patch_x_CbCr = torch.zeros(1, 2, parsed_args.patch_size, parsed_args.patch_size)
     else:
         uap_num = 4096
         uap_x_path = '/tmp/uap_v1.1/x_{}'.format(uap_num)
