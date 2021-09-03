@@ -33,7 +33,7 @@ def make_parser():
     parser = argparse.ArgumentParser(description='Test')
     parser.add_argument('-cfg',
                         '--config',
-                        default='experiments/siamfcpp/train/fulldata/157_1gpu.yaml',
+                        default='experiments/siamfcpp/train/fulldata/157.yaml',
                         type=str,
                         help='path to experiment configuration')
     parser.add_argument(
@@ -47,7 +47,7 @@ def make_parser():
     parser.add_argument('--ctr_weight', default=1.0, type=float)
     parser.add_argument('--reg_weight', default=1.0, type=float)
     parser.add_argument('--patch_size', type=int, default=64)
-    parser.add_argument('--gpu_id', type=str, default='1,4,5,6')
+    parser.add_argument('--gpu_id', type=str, default='1,2,3,4')
     parser.add_argument('--phase', type=str, default='FFT')
     return parser
 

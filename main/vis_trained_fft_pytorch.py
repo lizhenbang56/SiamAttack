@@ -16,6 +16,7 @@ def visualize_template_img(adv_template_img, save_name):
     adv_template_img = np.clip(adv_template_img, 0, 255).astype(np.uint8)
     save_path = '/tmp/0_{}.jpg'.format(save_name)
     assert cv2.imwrite(save_path, adv_template_img)
+    print('img saved to: ', save_path)
     return
 
 
@@ -25,7 +26,7 @@ def generate_gaussian_tensor(size):
 
 
 def load_img_tensor(video_name, img_name):
-    img_path = '/home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/snapshots_imperceptible_patch/FFT/visualization/512/GOT-10k_Val/{}/{}.jpg'.format(video_name, img_name)
+    img_path = '/home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/datasets/GOT-10k/val/GOT-10k_Val_000003/00000001.jpg'
     img_np = cv2.imread(img_path)
     img_tensor = torch.from_numpy(img_np.transpose(2,0,1)).unsqueeze(0).to(torch.float32)
     return img_tensor
@@ -58,7 +59,7 @@ def vis_fft(filter, fft):
 
 def main():
     img_tensor = load_img_tensor(video_name='GOT-10k_Val_000001', img_name='2_clean_search_img')
-    perturbation_fft_tensor = load_perturbation_fft_tensor(x_or_z='x', loop_num=128)
+    perturbation_fft_tensor = load_perturbation_fft_tensor(x_or_z='x', loop_num=512)
     visualize_template_img(perturbation_fft_tensor+128, save_name='raw_perturbation')
     filter = generate_gaussian_tensor(64)
     for color_channel in range(3):
