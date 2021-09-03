@@ -79,7 +79,7 @@ class RegularTrainer(TrainerBase):
         super(RegularTrainer, self).init_train()
         logger.info("{} initialized".format(type(self).__name__))
 
-    def train(self, patch_x, uap_z, real_iter_num, signal_img_debug, visualize, optimizer, dataset_name, params):
+    def train(self, patch_x_BG, patch_x_R, uap_z, real_iter_num, signal_img_debug, visualize, optimizer, dataset_name, params):
         """"""
         if not self._state["initialized"]:
             self.init_train()
@@ -177,13 +177,15 @@ class RegularTrainer(TrainerBase):
             with Timer(name="fwd", output_dict=time_dict):
 
                 """START：将扰动放至正确的显卡"""
-                patch_x = patch_x.to(self._state["devices"][0])
+                patch_x_BG = patch_x_BG.to(self._state["devices"][0])
+                patch_x_R = patch_x_R.to(self._state["devices"][0])
                 uap_z = uap_z.to(self._state["devices"][0])
                 """END：将扰动放至正确的显卡"""
 
                 """START：设置扰动为可获取梯度"""
                 uap_z.requires_grad = True
-                patch_x.requires_grad = True
+                patch_x_BG.requires_grad = True
+                patch_x_R.requires_grad = True
                 """END：设置扰动为可获取梯度"""
 
                 """START：在搜索图像添加补丁"""
@@ -191,7 +193,8 @@ class RegularTrainer(TrainerBase):
                     x1, y1, x2, y2 = [int(var) for var in xyxy]  # 补丁在搜索图像上的位置
                     try:
                         if params['phase'] == 'OURS':
-                            training_data['im_x'][idx, :, y1:y2+1, x1:x2+1] += patch_x[0]  # 不缩放补丁，相加操作，希望不可感知
+                            training_data['im_x'][idx, :2, y1:y2+1, x1:x2+1] += patch_x_BG[0]  # BG, 补丁
+                            training_data['im_x'][idx, -1, :, :] += patch_x_R[0][0]  # R, 背景
                         elif params['phase'] == 'AP':
                             training_data['im_x'][idx, :, y1:y2+1, x1:x2+1] = patch_x[0]
                         elif params['phase'] == 'UAP':
@@ -225,7 +228,7 @@ class RegularTrainer(TrainerBase):
                 for loss_name, loss in self._losses.items():
                     training_losses[loss_name], extras[loss_name] = loss(
                         predict_data, training_data)
-                norm_x_loss = torch.mean(patch_x.pow(2))
+                norm_x_loss = torch.mean(patch_x_BG.pow(2))
                 norm_z_loss = torch.mean(uap_z.pow(2))
                 cls_loss = training_losses['cls']
                 ctr_loss = training_losses['ctr']
@@ -248,16 +251,19 @@ class RegularTrainer(TrainerBase):
                 if self.optimize_mode == 'FGSM':
                     """START：收集相对于输入图像的梯度"""
                     im_z_grad = torch.mean(uap_z.grad.data, dim=0, keepdims=True)
-                    patch_grad = torch.mean(patch_x.grad.data, dim=0, keepdims=True)
+                    patch_BG_grad = torch.mean(patch_x_BG.grad.data, dim=0, keepdims=True)
+                    patch_R_grad = torch.mean(patch_x_R.grad.data, dim=0, keepdims=True)
                     """END：收集相对于输入图像的梯度"""
 
                     """START：根据梯度得到新的扰动"""
-                    patch_x = fgsm_attack(patch_x, patch_grad, self.lr_x)
+                    patch_x_BG = fgsm_attack(patch_x_BG, patch_BG_grad, self.lr_x)
+                    patch_x_R = fgsm_attack(patch_x_R, patch_R_grad, self.lr_x)
                     if params['phase'] == 'AP':
                         uap_z = fgsm_attack(uap_z, im_z_grad, 0)
                     else:
                         uap_z = fgsm_attack(uap_z, im_z_grad, self.lr_z)
-                    patch_x = patch_x.detach()
+                    patch_x_BG = patch_x_BG.detach()
+                    patch_x_R = patch_x_R.detach()
                     uap_z = uap_z.detach()
                     """END：根据梯度得到新的扰动"""
                 elif self.optimize_mode == 'optimizer':
@@ -295,11 +301,13 @@ class RegularTrainer(TrainerBase):
 
             """START：保存扰动"""
             if real_iter_num & (real_iter_num - 1) == 0:
-                save_path_x = os.path.join(save_dir, 'x_{}'.format(real_iter_num))
+                save_path_x_BG = os.path.join(save_dir, 'x_BG_{}'.format(real_iter_num))
+                save_path_x_R = os.path.join(save_dir, 'x_R_{}'.format(real_iter_num))
                 save_path_z = os.path.join(save_dir, 'z_{}'.format(real_iter_num))
-                torch.save(patch_x, save_path_x)
+                torch.save(patch_x_BG, save_path_x_BG)
+                torch.save(patch_x_R, save_path_x_R)
                 torch.save(uap_z, save_path_z)
-                print(' save to: {} {}'.format(save_path_x, save_path_z))
+                print(' save to: {} {}'.format(save_path_x_BG, save_path_z))
             """END：保存扰动"""
 
         return patch_x, uap_z, real_iter_num

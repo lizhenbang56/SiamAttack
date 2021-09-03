@@ -200,11 +200,13 @@ class SiamFCppTracker(PipelineBase):
         if self.do_attack:
             """START：读入扰动"""
             self.uap_root = os.path.join(sys.path[0], 'snapshots_imperceptible_patch/{}'.format(self.save_name))
-            patch_x_path = os.path.join(self.uap_root, 'x_{}'.format(self.loop_num))
+            patch_x_BG_path = os.path.join(self.uap_root, 'x_BG_{}'.format(self.loop_num))
+            patch_x_R_path = os.path.join(self.uap_root, 'x_R_{}'.format(self.loop_num))
             uap_z_path = os.path.join(self.uap_root, 'z_{}'.format(self.loop_num))
-            self.patch_x = torch.load(patch_x_path, map_location='cpu')
+            self.patch_x_BG = torch.load(patch_x_BG_path, map_location='cpu')
+            self.patch_x_R = torch.load(patch_x_R_path, map_location='cpu')
             self.uap_z = torch.load(uap_z_path, map_location='cpu')
-            print('loading: ', patch_x_path, uap_z_path)
+            print('loading: ', patch_x_BG_path, uap_z_path)
             """END：读入扰动"""
         else:
             print('NO ATTACK')
@@ -286,8 +288,8 @@ class SiamFCppTracker(PipelineBase):
             patch_gt_y2_ori = patch_gt_y1_ori + patch_gt_h_ori
             
             # 将补丁在原图上的位置转换为在搜索图像上的位置
-            w = self.patch_x.shape[2]
-            h = self.patch_x.shape[3]
+            w = self.patch_x_BG.shape[2]
+            h = self.patch_x_BG.shape[3]
             x1, y1 = _point_from_original_img_to_search_img([patch_gt_x1_ori, patch_gt_y1_ori], target_pos, scale_x, x_size)
             real_x2, real_y2 = _point_from_original_img_to_search_img([patch_gt_x2_ori, patch_gt_y2_ori], target_pos, scale_x, x_size)
             self._state['gt_xyxy'] = [x1, y1, real_x2, real_y2]
@@ -324,7 +326,8 @@ class SiamFCppTracker(PipelineBase):
         if self.do_attack:
             try:
                 if self.phase == 'OURS':
-                    data[0, :, y1:y1+h, x1:x1+w] += self.patch_x.to(self.device)[0]  # 添加而不是粘贴
+                    data[0, :2, y1:y1+h, x1:x1+w] += self.patch_x_BG.to(self.device)[0]  # 添加而不是粘贴
+                    data[0, -2, :, :] += self.patch_x_R.to(self.device)[0][0]  # 添加而不是粘贴
                 elif self.phase == 'AP':
                     data[0, :, y1:y1+h, x1:x1+w] = self.patch_x.to(self.device)[0]
                 elif self.phase == 'UAP':
