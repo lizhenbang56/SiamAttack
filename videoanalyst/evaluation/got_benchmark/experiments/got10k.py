@@ -234,6 +234,8 @@ class ExperimentGOT10k(object):
                         seq_times = seq_times[seq_times > 0]
                         if len(seq_times) > 0:
                             times[seq_name] = seq_times
+                    else:
+                        seq_times = []
 
                     # store sequence-wise performance
                     ao, sr, speed, _ = self._evaluate(seq_ious, seq_times)

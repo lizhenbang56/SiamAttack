@@ -53,7 +53,7 @@ def generate_perturbation_x1(patch_x, filter_x, patch_x_background, color_channe
     return patch_x_background[0][color_channel, :, :]
 
 
-def generate_perturbation_x(patch_x, filter_x, patch_x_background, color_channel, dtype, x1, y1, x2, y2, requires_grad=False):
+def generate_perturbation_x(patch_x, filter_x, color_channel, dtype, x1, y1, x2, y2, requires_grad=False):
     ifft = filter(patch_x[0,color_channel,:,:], filter_x)  # 进行高通滤波
     perturbed_x_one_channel_mask = restrict_tensor(ifft.to(dtype))  # 限制值，转为整型
     return perturbed_x_one_channel_mask

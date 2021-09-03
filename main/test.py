@@ -19,7 +19,7 @@ from videoanalyst.utils import complete_path_wt_root_in_cfg
 def make_parser():
     parser = argparse.ArgumentParser(description='Test')
     parser.add_argument('--dataset_name', type=str, default='GOT-10k_Val')  # 'GOT-10k_Val' 'OTB_2015' 'LaSOT'
-    parser.add_argument('--loop_num', type=int, default=512)
+    parser.add_argument('--loop_num', type=int, default=2048)
     parser.add_argument('--do_attack', type=str, default='true')
     parser.add_argument('--trainset', default='fulldata', type=str)
     parser.add_argument('--optimize_mode', default='FGSM', type=str)
@@ -30,7 +30,7 @@ def make_parser():
     parser.add_argument('--l2_x_weight', default=0.00001, type=float)
     parser.add_argument('--lr_z', default=0.1, type=float)
     parser.add_argument('--lr_x', default=0.5, type=float)
-    parser.add_argument('--gpu_id', default='1,5,6,7', type=str)
+    parser.add_argument('--gpu_id', default='1,2,3,4', type=str)
     parser.add_argument('--patch_size', type=int, default=64)
     parser.add_argument('--backbone', type=str, default='googlenet')  # 'alexnet' 'shufflenetv2x1_0'
     parser.add_argument('--phase', type=str, default='FFT')

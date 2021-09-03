@@ -230,7 +230,6 @@ class SiamFCppTracker(PipelineBase):
             patch_x_background_path = os.path.join(self.uap_root, 'x_background_{}'.format(self.loop_num))
             uap_z_path = os.path.join(self.uap_root, 'z_{}'.format(self.loop_num))
             self.patch_x = torch.load(patch_x_path, map_location='cpu')
-            self.patch_background_x = torch.load(patch_x_background_path, map_location='cpu')
             self.uap_z = torch.load(uap_z_path, map_location='cpu')
             print('loading: ', patch_x_path, patch_x_background_path, uap_z_path)
             """END：读入扰动"""
@@ -370,7 +369,6 @@ class SiamFCppTracker(PipelineBase):
                         perturbed_x_one_channel_mask = generate_perturbation_x(
                             self.patch_x.to(self.device), 
                             self.filter_x.to(self.device),
-                            self.patch_background_x.to(self.device),
                             color_channel, dtype, x1, y1, x1+w-1, y1+h-1)
                         data[0, color_channel, :, :] = apply_perturbation(data[0, color_channel, :, :], perturbed_x_one_channel_mask, x1, y1, x1+w-1, y1+h-1)
                 else:
