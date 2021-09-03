@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*
+import sys
 import copy
 from collections import OrderedDict
 import os
@@ -122,7 +123,7 @@ class RegularTrainer(TrainerBase):
 
         """START：设置保存路径"""
         print(self.save_name)
-        save_dir = os.path.join('/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_imperceptible_patch', self.save_name)
+        save_dir = os.path.join(sys.path[0], 'snapshots_imperceptible_patch', self.save_name)
         if signal_img_debug:
             save_dir = '/tmp/uap_debug'
         self.writer = SummaryWriter(save_dir)
@@ -153,8 +154,8 @@ class RegularTrainer(TrainerBase):
 
                 """START：获取 training data"""
                 training_data = next(self._dataloader)
-                training_data['im_x'] = bgr2ycbcr_pytorch(trainer_data['im_x'])
-                training_data['im_z'] = bgr2ycbcr_pytorch(trainer_data['im_z'])
+                training_data['im_x'] = bgr2ycbcr_pytorch(training_data['im_x'])
+                training_data['im_z'] = bgr2ycbcr_pytorch(training_data['im_z'])
                 """END：获取 training data"""
 
             training_data = move_data_to_device(training_data,

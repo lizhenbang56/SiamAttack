@@ -35,10 +35,12 @@ def make_parser():
                         default='experiments/siamfcpp/train/fulldata/siamfcpp_googlenet-trn-fulldata.yaml',
                         type=str,
                         help='path to experiment configuration')
+    resume_path = os.path.join(sys.path[0], "models/siamfcpp/siamfcpp-googlenet-got-md5_e182dc4c3823427022eccf7313d740a7.pkl")
+    assert os.path.exists(resume_path), resume_path
     parser.add_argument(
         '-r',
         '--resume',
-        default="/home/etvuz/projects/adversarial_attack/video_analyst/models/siamfcpp/siamfcpp-googlenet-got-md5_e182dc4c3823427022eccf7313d740a7.pkl",
+        default=resume_path,
         help=r"completed epoch's number, latest or one model path")
     parser.add_argument('--signal_img_debug', default=False, type=bool)
     parser.add_argument('--uap_resume', default=False, type=bool)
@@ -46,7 +48,7 @@ def make_parser():
     parser.add_argument('--ctr_weight', default=1.0, type=float)
     parser.add_argument('--reg_weight', default=1.0, type=float)
     parser.add_argument('--patch_size', type=int, default=64)
-    parser.add_argument('--gpu_id', type=str, default='1,2,3')
+    parser.add_argument('--gpu_id', type=str, default='1,2,3,4')
     parser.add_argument('--phase', type=str, default='OURS')
     return parser
 

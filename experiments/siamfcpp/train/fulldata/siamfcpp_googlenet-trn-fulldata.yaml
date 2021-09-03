@@ -47,7 +47,7 @@ train:
   track:
     exp_name: &TRAIN_NAME "siamfcpp_googlenet-fulldata"
     exp_save: &TRAIN_SAVE "snapshots"
-    num_processes: 3
+    num_processes: 4
     model:
       backbone:
         name: "Inception3"
@@ -99,11 +99,8 @@ train:
           negative_pair_ratio: 0.0
         submodules:
           dataset:
-            names: [
-              "COCODataset", 
-              "GOT10kDataset", 
-              "VIDDataset",
-              "LaSOTDataset", 
+            names: [ 
+              "GOT10kDataset",  
               ]
             GOT10kDataset: &GOT10KDATASET_CFG
               ratio: 0.2
