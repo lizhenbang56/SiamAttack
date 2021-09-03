@@ -122,13 +122,8 @@ if __name__ == '__main__':
     if not parsed_args.uap_resume:
         uap_z = torch.zeros((1, 3, 127, 127))
         if parsed_args.phase == 'OURS':
-            patch_x = torch.zeros(1, 3, parsed_args.patch_size, parsed_args.patch_size)  # 因为是相加，所以初始化为0
-        elif parsed_args.phase == 'AP':
-            patch_x = 127 * torch.ones(1, 3, parsed_args.patch_size, parsed_args.patch_size)
-        elif parsed_args.phase == 'UAP':
-            patch_x = torch.zeros(1, 3, 303, 303)
-        optimizer = torch.optim.AdamW([patch_x, uap_z], lr=0.1, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.0,
-                                      amsgrad=False)
+            patch_x_Y = torch.zeros(1, 1, parsed_args.patch_size, parsed_args.patch_size)
+            patch_x_CbCr = torch.zeros(1, 2, 303, 303)
     else:
         uap_num = 4096
         uap_x_path = '/tmp/uap_v1.1/x_{}'.format(uap_num)
@@ -142,8 +137,8 @@ if __name__ == '__main__':
 
     logger.info("Start training")
     while not trainer.is_completed():
-        patch_x, uap_z, real_iter_num = trainer.train(patch_x, uap_z, real_iter_num, parsed_args.signal_img_debug,
-                                                      visualize=parsed_args.uap_resume, optimizer=optimizer, dataset_name=dataset_name,
+        patch_x_CbCr, patch_x_Y, uap_z, real_iter_num = trainer.train(patch_x_CbCr, patch_x_Y, uap_z, real_iter_num, parsed_args.signal_img_debug,
+                                                      visualize=parsed_args.uap_resume, optimizer=None, dataset_name=dataset_name,
                                                       params={'cls_weight': parsed_args.cls_weight,
                                                               'ctr_weight': parsed_args.ctr_weight,
                                                               'reg_weight': parsed_args.reg_weight,

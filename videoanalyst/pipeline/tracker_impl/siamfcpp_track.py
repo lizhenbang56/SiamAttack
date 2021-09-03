@@ -5,7 +5,7 @@ import os
 import numpy as np
 
 import torch
-
+from videoanalyst.engine.trainer.trainer_impl.regular_trainer import ycbcr2bgr_pytorch, bgr2ycbcr_pytorch
 from videoanalyst.pipeline.pipeline_base import TRACK_PIPELINES, PipelineBase
 from videoanalyst.pipeline.utils import (cxywh2xywh, get_crop, xyxy2xywh,
                                          get_subwindow_tracking,
@@ -183,10 +183,14 @@ class SiamFCppTracker(PipelineBase):
         with torch.no_grad():
             data = imarray_to_tensor(im_z_crop).to(self.device)
 
+            data = bgr2ycbcr_pytorch(data)
+
             """START：添加扰动"""
             if self.do_attack:
                 data += self.uap_z.to(self.device)
             """END：添加扰动"""
+
+            data = ycbcr2bgr_pytorch(data)
 
             """START：保存模板图像"""
             self._state['adv_template_img'] = np.ascontiguousarray(data[0].cpu().numpy().transpose(1, 2, 0))
@@ -199,12 +203,14 @@ class SiamFCppTracker(PipelineBase):
     def load_attack(self):
         if self.do_attack:
             """START：读入扰动"""
-            self.uap_root = '/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_imperceptible_patch/{}'.format(self.save_name)
-            patch_x_path = os.path.join(self.uap_root, 'x_{}'.format(self.loop_num))
+            self.uap_root = os.path.join(sys.path[0], 'snapshots_imperceptible_patch/{}'.format(self.save_name))
+            patch_x_CbCr_path = os.path.join(self.uap_root, 'x_{}_CbCr'.format(self.loop_num))
+            patch_x_Y_path = os.path.join(self.uap_root, 'x_{}_Y'.format(self.loop_num))
             uap_z_path = os.path.join(self.uap_root, 'z_{}'.format(self.loop_num))
-            self.patch_x = torch.load(patch_x_path, map_location='cpu')
+            self.patch_x_CbCr = torch.load(patch_x_CbCr_path, map_location='cpu')
+            self.patch_x_Y = torch.load(patch_x_Y_path, map_location='cpu')
             self.uap_z = torch.load(uap_z_path, map_location='cpu')
-            print('loading: ', patch_x_path, uap_z_path)
+            print('loading: ', patch_x_CbCr_path, uap_z_path)
             """END：读入扰动"""
         else:
             print('NO ATTACK')
@@ -286,8 +292,8 @@ class SiamFCppTracker(PipelineBase):
             patch_gt_y2_ori = patch_gt_y1_ori + patch_gt_h_ori
             
             # 将补丁在原图上的位置转换为在搜索图像上的位置
-            w = self.patch_x.shape[2]
-            h = self.patch_x.shape[3]
+            w = self.patch_x_Y.shape[2]
+            h = self.patch_x_Y.shape[3]
             x1, y1 = _point_from_original_img_to_search_img([patch_gt_x1_ori, patch_gt_y1_ori], target_pos, scale_x, x_size)
             real_x2, real_y2 = _point_from_original_img_to_search_img([patch_gt_x2_ori, patch_gt_y2_ori], target_pos, scale_x, x_size)
             self._state['gt_xyxy'] = [x1, y1, real_x2, real_y2]
@@ -321,10 +327,12 @@ class SiamFCppTracker(PipelineBase):
 
         """START：在搜索图像添加对抗补丁（不进行缩放）"""
         data = imarray_to_tensor(im_x_crop).to(self.device)  # [1,3,h,w]
+        data = bgr2ycbcr_pytorch(data)
         if self.do_attack:
             try:
                 if self.phase == 'OURS':
-                    data[0, :, y1:y1+h, x1:x1+w] += self.patch_x.to(self.device)[0]  # 添加而不是粘贴
+                    data[0, 0, y1:y1+h, x1:x1+w] += self.patch_x_Y[0, 0].to(self.device)
+                    data[0, 1:, :, :] += self.patch_x_CbCr[0].to(self.device)
                 elif self.phase == 'AP':
                     data[0, :, y1:y1+h, x1:x1+w] = self.patch_x.to(self.device)[0]
                 elif self.phase == 'UAP':
@@ -333,6 +341,7 @@ class SiamFCppTracker(PipelineBase):
                     assert False, self.phase
             except Exception:
                 print('bad prediction')
+        data = ycbcr2bgr_pytorch(data)
         """END：在搜索图像添加对抗补丁（不进行缩放）"""
 
         with torch.no_grad():

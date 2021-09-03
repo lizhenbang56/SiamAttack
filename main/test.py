@@ -19,7 +19,7 @@ from videoanalyst.utils import complete_path_wt_root_in_cfg
 def make_parser():
     parser = argparse.ArgumentParser(description='Test')
     parser.add_argument('--dataset_name', type=str, default='GOT-10k_Val')  # 'GOT-10k_Val' 'OTB_2015' 'LaSOT'
-    parser.add_argument('--loop_num', type=int, default=256)
+    parser.add_argument('--loop_num', type=int, default=512)
     parser.add_argument('--do_attack', type=str, default='true')
     parser.add_argument('--trainset', default='fulldata', type=str)
     parser.add_argument('--optimize_mode', default='FGSM', type=str)
@@ -30,7 +30,7 @@ def make_parser():
     parser.add_argument('--l2_x_weight', default=0.00001, type=float)
     parser.add_argument('--lr_z', default=0.1, type=float)
     parser.add_argument('--lr_x', default=0.5, type=float)
-    parser.add_argument('--gpu_id', default='2', type=str)
+    parser.add_argument('--gpu_id', default='1,2,3,4', type=str)
     parser.add_argument('--patch_size', type=int, default=64)
     parser.add_argument('--backbone', type=str, default='googlenet')  # 'alexnet' 'shufflenetv2x1_0'
     parser.add_argument('--phase', type=str, default='OURS')
@@ -79,9 +79,9 @@ if __name__ == '__main__':
         assert False, parsed_args.dataset_name
     """设置参数"""
 
-    # """设置GPU"""
-    # os.environ['CUDA_VISIBLE_DEVICES'] = parsed_args.gpu_id
-    # """设置GPU"""
+    """设置GPU"""
+    os.environ['CUDA_VISIBLE_DEVICES'] = parsed_args.gpu_id
+    """设置GPU"""
 
     # experiment config
     exp_cfg_path = osp.realpath(parsed_args.config)
