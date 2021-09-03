@@ -5,8 +5,6 @@ model_store
 *.swp
 *.swo
 *.pyc
-*.png
-*.jpg
 *.pkl
 core
 *.out

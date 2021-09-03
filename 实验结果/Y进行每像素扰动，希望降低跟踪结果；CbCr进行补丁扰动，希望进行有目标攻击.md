@@ -22,8 +22,7 @@ cls: 0.202, ctr: 0.565, reg: 0.796, x: 97.19, z: 37.79, iou: 0.800, data: 1.5e-0
  采用 512 次迭代。
 
  # 测试结果
- 使用 main/eval_origin.py 获得。
- ![](success_plot.png)
+ 使用 main/eval_origin.py 获得。AO=0.22. 若删除背景，AO=0.315.
 
  # 扰动可视化
  ![](1_adv_template_img.jpg)
