@@ -33,3 +33,18 @@ SSIM_z=0.56, SSIM_x=0.60, AO=0.255
 ## 1024
 
 cls: 0.200, ctr: 0.582, reg: 0.971, x: 25.23, z: 39.11, iou: 0.760, data: 1.6e-01, fwd: 8.9e-01,  max mem: 7074.1M:    save to:/home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/snapshots_imperceptible_patch/64/x_1024_CbCr /home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/snapshots_imperceptible_patch/64/z_1024
+
+# 对模板加4倍约束，对补丁CbCr加4倍约束，不对背景Y加约束。
+
+## 4096次迭代
+cls: 0.189, ctr: 0.573, reg: 0.826, x: 17.50, z: 10.91, iou: 0.781, data: 1.3e-01, fwd: 8.8e-01,  max mem: 7074.1M:   0%| | 4095 save to: /home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/snapshots_imperceptible_patch/64/x_4096_CbCr /home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/snapshots_imperceptible_patch/64/z_4096
+
+SSIM=0.43
+
+![](ssim_4096.jpg)
+## 32768次迭代
+cls: 0.113, ctr: 0.556, reg: 0.616, x: 14.25, z: 8.48, iou: 0.823, data: 1.8e-01, fwd: 8.9e-01,  max mem: 7074.1M:   0%| | 32767 save to: /home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/snapshots_imperceptible_patch/64/x_32768_CbCr /home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/snapshots_imperceptible_patch/64/z_32768
+
+SSIM=0.1
+
+![](ssim.jpg)

@@ -227,7 +227,7 @@ class RegularTrainer(TrainerBase):
                 total_loss = self.cls_weight*cls_loss + \
                              self.ctr_weight*ctr_loss + \
                              self.reg_weight*reg_loss + \
-                             self.l2_z_weight*norm_z_loss + \
+                             self.l2_z_weight*norm_z_loss * 4 + \
                              self.l2_x_weight*norm_x_loss * 4
                 """END：计算损失"""
 

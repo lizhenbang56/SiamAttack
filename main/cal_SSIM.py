@@ -38,8 +38,9 @@ def cal_SSIM(path_CbCr, path_Y):
 
 
 def main():
-    path_CbCr = '/home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/snapshots_imperceptible_patch/64/x_512_CbCr'
-    path_Y = '/home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/snapshots_imperceptible_patch/64/x_512_Y'
+    iteration_num = 4096
+    path_CbCr = '/home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/snapshots_imperceptible_patch/64/x_{}_CbCr'.format(iteration_num)
+    path_Y = '/home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/snapshots_imperceptible_patch/64/x_{}_Y'.format(iteration_num)
     cal_SSIM(path_CbCr, path_Y)
 
 
