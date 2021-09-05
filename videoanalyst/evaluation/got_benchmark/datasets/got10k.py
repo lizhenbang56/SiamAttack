@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function
-
+import sys
 import glob
 import os
 import pickle
@@ -83,6 +83,8 @@ class GOT10k(object):
             seq_name = index
         img_files = GOT10k.data_dict[self.subset][seq_name]["img_files"]
         anno = GOT10k.data_dict[self.subset][seq_name]["anno"]
+        anno_path = os.path.join(sys.path[0], 'datasets/GOT-10k-val-GT', seq_name, 'groundtruth.txt')
+        anno = np.loadtxt(anno_path, delimiter=',', dtype=np.float64)
 
         if self.subset == 'test' and (anno.size // 4 == 1):
             anno = anno.reshape(-1, 4)
