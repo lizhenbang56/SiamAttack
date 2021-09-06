@@ -33,9 +33,10 @@ def main():
 if __name__ == '__main__':
     """定义参数"""
     parser = argparse.ArgumentParser(description='eval')
-    parser.add_argument('--loop_num', type=int, default=512)
+    parser.add_argument('--loop_num', type=int, default=16384)
     parser.add_argument('--dataset_name', type=str, default='GOT-10k_Val')  # 'LaSOT' 'GOT-10k_Val' 'OTB_2015'
     parsed_args = parser.parse_args()
+    print('迭代次数：{}'.format(parsed_args.loop_num))
     """定义参数"""
 
     """定义文件夹"""

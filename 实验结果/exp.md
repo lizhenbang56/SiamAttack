@@ -48,3 +48,35 @@ cls: 0.113, ctr: 0.556, reg: 0.616, x: 14.25, z: 8.48, iou: 0.823, data: 1.8e-01
 SSIM=0.1
 
 ![](ssim.jpg)
+
+# 对模板加4倍约束，对补丁CbCr加4倍约束，对背景Y加4倍约束。
+
+## 512
+
+cls: 0.274, ctr: 0.588, reg: 1.248, x: 32.75, z: 12.84, iou: 0.706, data: 1.8e-01, fwd: 8.7e-01,  max mem: 7074.5M: 511/15625000 [09:52<4842:41:48,  1.12s/it] save to: /home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/snapshots_imperceptible_patch/64/x_512_CbCr /home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/snapshots_imperceptible_patch/64/z_512
+
+## 16384
+
+cls: 0.279, ctr: 0.583, reg: 1.193, x: 32.34, z: 14.06, iou: 0.718, data: 1.7e-01, fwd: 8.7e-01,  max mem: 7074.5M: save to: /home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/snapshots_imperceptible_patch/64/x_16384_CbCr /home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/snapshots_imperceptible_patch/64/z_16384
+
+## 性能
+
+targeted_AO=0.6816848823237673
+
+targeted_SR=0.7556506684620563
+
+untargeted_AO=0.24612634038104683
+
+untargeted_SR=0.22727709916322017
+
+### 模板图像
+
+![](16384_adv_template_img.jpg)
+
+SSIM(灰色背景) = 0.7898699709064916
+
+### 搜索图像
+
+![](16384_adv_search_img.jpg)
+
+SSIM(灰色背景，64*64补丁区域) = 0.8522086978037183

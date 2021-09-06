@@ -13,7 +13,7 @@ def cal_SSIM(path_CbCr, path_Y):
     perturbation_shape = 64
 
     """读入基准图像"""
-    base = cv2.imread('/home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/snapshots_imperceptible_patch/64/visualization/512/GOT-10k_Val/GOT-10k_Val_000001/2_clean_search_img.jpg')
+    base = cv2.imread('/home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/snapshots_imperceptible_patch/64/visualization/512/GOT-10k_Val/GOT-10k_Val_000003/2_clean_search_img.jpg')
     """读入基准图像"""
 
     img = base.copy()
@@ -38,7 +38,7 @@ def cal_SSIM(path_CbCr, path_Y):
 
 
 def main():
-    iteration_num = 4096
+    iteration_num = 16384
     path_CbCr = '/home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/snapshots_imperceptible_patch/64/x_{}_CbCr'.format(iteration_num)
     path_Y = '/home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/snapshots_imperceptible_patch/64/x_{}_Y'.format(iteration_num)
     cal_SSIM(path_CbCr, path_Y)

@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/home/etvuz/projects/adversarial_attack/video_analyst')
+from paths import ROOT_PATH
 import os
 import ast
 import glob
@@ -7,7 +7,7 @@ import argparse
 import numpy as np
 import xlsxwriter
 from natsort import natsorted # pip install natsort
-from main.visualize_uap import vis_uap
+# from main.visualize_uap import vis_uap
 from videoanalyst.evaluation.got_benchmark.utils.metrics import rect_iou
 from videoanalyst.evaluation.got_benchmark.datasets import GOT10k
 from videoanalyst.evaluation.got_benchmark.experiments.got10k import ExperimentGOT10k
@@ -20,7 +20,7 @@ def parse_args():
     parser.add_argument('--dataset_name', type=str, default='GOT-10k_Val')  # 'OTB_2015' 'LaSOT' 'GOT-10k_Val'
     parser.add_argument('--loop_num', type=int, default=2048)
     parser.add_argument('--backbone_name', type=str, default='siamfcpp_googlenet')
-    parser.add_argument('--tracker_name', type=str, default='UAP')
+    parser.add_argument('--tracker_name', type=str, default='64')
     parser.add_argument('--cls_weight', type=float, default=1.0)
     parser.add_argument('--ctr_weight', type=float, default=1.0)
     parser.add_argument('--reg_weight', type=float, default=1.0)
@@ -80,7 +80,7 @@ def eval_got10k_val(FGT_root, dataset, experimentGOT10k, result_root):
 
 
 def eval_otb_2015(false_ground_truth, FGT_root, result_root, report_root):
-    experiment = ExperimentOTB('/home/etvuz/projects/adversarial_attack/video_analyst/datasets/OTB/OTB2015',
+    experiment = ExperimentOTB('/home/etvuz/projects/adversarial_attack/datasets/OTB/OTB2015',
                                version=2015,
                                result_dir=result_root,
                                report_dir=report_root,
@@ -98,7 +98,7 @@ def eval_otb_2015(false_ground_truth, FGT_root, result_root, report_root):
  
 
 def eval_lasot(FGT_root, result_root, report_root):
-    experiment = ExperimentLaSOT('/home/etvuz/projects/adversarial_attack/video_analyst/datasets/LaSOT',
+    experiment = ExperimentLaSOT('/home/etvuz/projects/adversarial_attack/datasets/LaSOT',
                                  subset='test',
                                  return_meta=False,
                                  report_dir=report_root,
@@ -149,9 +149,9 @@ def main():
     else:
         assert False, args
 
-    result_root = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/{}/result/{}/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name, args.loop_num))
-    report_root = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/{}/report/{}/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name, args.loop_num))
-    FGT_root = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/{}/FGT/{}/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name, args.loop_num))
+    result_root = os.path.join(root, 'snapshots_imperceptible_patch/{}/result/{}/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name, args.loop_num))
+    report_root = os.path.join(root, 'snapshots_imperceptible_patch/{}/report/{}/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name, args.loop_num))
+    FGT_root = os.path.join(root, 'snapshots_imperceptible_patch/{}/FGT/{}/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name, args.loop_num))
     """设置文件夹路径"""    
     
     if dataset_name == 'OTB_2015':
@@ -160,8 +160,8 @@ def main():
     elif dataset_name == 'LaSOT':
         gt_str, fgt_str = eval_lasot()
     elif dataset_name == 'GOT-10k_Val':
-        dataset = GOT10k(os.path.join(root, 'video_analyst/datasets/GOT-10k'), subset='val', return_meta=True)
-        experimentGOT10k = ExperimentGOT10k(os.path.join(root, 'video_analyst/datasets/GOT-10k'), subset='val', result_dir=result_root, phase='eval', report_dir=report_root)
+        dataset = GOT10k(os.path.join(root, 'datasets/GOT-10k'), subset='val', return_meta=True)
+        experimentGOT10k = ExperimentGOT10k(os.path.join(root, 'datasets/GOT-10k'), subset='val', result_dir=result_root, phase='eval', report_dir=report_root)
         gt_str, fgt_str = eval_got10k_val()
     else:
         assert False, dataset_name
@@ -177,9 +177,10 @@ def main():
     print(save_path)
     """评估结果展示与保存"""
 
+
 def eval_all():
     """创建excel 表格"""
-    report_base = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/{}/report/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name))
+    report_base = os.path.join(root, 'snapshots_imperceptible_patch/{}/report/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name))
     if not os.path.exists(report_base):
         os.makedirs(report_base)
     workbook = xlsxwriter.Workbook(os.path.join(report_base, 'iter.xlsx'))
@@ -192,7 +193,7 @@ def eval_all():
     col += 1
     """创建excel 表格"""
 
-    result_base = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/{}/result/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name))
+    result_base = os.path.join(root, 'snapshots_imperceptible_patch/{}/result/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name))
     loop_nums = os.listdir(result_base)
     """仅对特定参数执行iter遍历"""
     assert args.dataset_name =='GOT-10k_Val' and args.ctr_weight == 1.0 and args.ctr_weight == 1.0 and args.reg_weight == 1.0 and args.tracker_name in ['64', 'AP', 'UAP'] and args.backbone_name == 'siamfcpp_googlenet'
@@ -207,17 +208,17 @@ def eval_all():
             continue
         if loop_num & (loop_num - 1) != 0:
             continue
-        if loop_num > 8192:
+        if loop_num > 16384:
             break
         
         """设置文件夹路径"""
         dataset_name = args.dataset_name
-        result_root = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/{}/result/{}/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name, loop_num_str))
-        report_root = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/{}/report/{}/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name, loop_num_str))
+        result_root = os.path.join(root, 'snapshots_imperceptible_patch/{}/result/{}/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name, loop_num_str))
+        report_root = os.path.join(root, 'snapshots_imperceptible_patch/{}/report/{}/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name, loop_num_str))
         if not os.path.exists(report_root):
             os.makedirs(report_root)
         print(report_root)
-        FGT_root = os.path.join(root, 'video_analyst/snapshots_imperceptible_patch/{}/FGT/{}/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name, loop_num_str))
+        FGT_root = os.path.join(root, 'snapshots_imperceptible_patch/{}/FGT/{}/{}/{}'.format(tracker_name, args.dataset_name, args.backbone_name, loop_num_str))
         """设置文件夹路径"""
 
         if dataset_name == 'OTB_2015':
@@ -226,19 +227,20 @@ def eval_all():
         elif dataset_name == 'LaSOT':
             gt_str, fgt_str = eval_lasot(FGT_root=FGT_root, result_root=result_root, report_root=report_root)
         elif dataset_name == 'GOT-10k_Val':
-            dataset = GOT10k(os.path.join(root, 'video_analyst/datasets/GOT-10k'), subset='val', return_meta=True)
-            experimentGOT10k = ExperimentGOT10k(os.path.join(root, 'video_analyst/datasets/GOT-10k'), subset='val', result_dir=result_root, phase='eval', report_dir=report_root)
+            dataset = GOT10k(os.path.join(root, 'datasets/GOT-10k'), subset='val', return_meta=True)
+            experimentGOT10k = ExperimentGOT10k(os.path.join(root, 'datasets/GOT-10k'), subset='val', result_dir=result_root, phase='eval', report_dir=report_root)
             gt_ao, gt_sr_50, fgt_ao, fgt_sr_50 = eval_got10k_val(FGT_root=FGT_root, dataset=dataset, experimentGOT10k=experimentGOT10k, result_root=result_root)
         else:
             assert False, dataset_name
 
         """计算 SSIM"""
-        ssim_z, ssim_x = vis_uap('/home/etvuz/projects/adversarial_attack/video_analyst/snapshots_imperceptible_patch/{}'.format(tracker_name), loop_num, phase=args.tracker_name)
+        ssim_z, ssim_x = 0, 0
 
         """评估结果展示与保存"""
         # name = ['iter num', 'FGT-AO', 'FGT-SR-50', 'GT-AO', 'GT-SR-50', 'SSIM-z', 'SSIM-x']
         value = [loop_num, fgt_ao, fgt_sr_50, gt_ao, gt_sr_50, ssim_z, ssim_x]
         worksheet.write_column(row, col, value)
+        print(value)
         col += 1
         """评估结果展示与保存"""
     """循环每个 iter_num"""
@@ -246,7 +248,7 @@ def eval_all():
 
 
 if __name__ == '__main__':
-    root = '/home/etvuz/projects/adversarial_attack'
+    root = sys.path[0]
     args = parse_args()
     tracker_name = str(args.tracker_name)
     eval_all()

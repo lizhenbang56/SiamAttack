@@ -12,6 +12,7 @@ def cal_SSIM(path_z):
 
     """读入基准图像"""
     base = 128 * np.ones((127, 127, 3), dtype=np.float64)
+    # base = cv2.imread('/home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/snapshots_imperceptible_patch/64/visualization/512/GOT-10k_Val/GOT-10k_Val_000003/1_clean_template_img.jpg')
     """读入基准图像"""
 
     img = base.copy()
@@ -31,7 +32,9 @@ def cal_SSIM(path_z):
 
 
 def main():
-    path_z = '/home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/snapshots_imperceptible_patch/64/z_512'
+    iter_num = 16384
+    print("迭代次数：{}".format(iter_num))
+    path_z = '/home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/snapshots_imperceptible_patch/64/z_{}'.format(iter_num)
     cal_SSIM(path_z)
 
 

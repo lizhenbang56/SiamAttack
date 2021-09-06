@@ -219,7 +219,7 @@ class RegularTrainer(TrainerBase):
                 for loss_name, loss in self._losses.items():
                     training_losses[loss_name], extras[loss_name] = loss(
                         predict_data, training_data)
-                norm_x_loss = torch.mean(patch_x_CbCr.pow(2))
+                norm_x_loss = torch.mean(patch_x_CbCr.pow(2)) + torch.mean(patch_x_Y.pow(2))
                 norm_z_loss = torch.mean(uap_z.pow(2))
                 cls_loss = training_losses['cls']
                 ctr_loss = training_losses['ctr']
