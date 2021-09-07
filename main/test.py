@@ -30,7 +30,7 @@ def make_parser():
     parser.add_argument('--l2_x_weight', default=0.00001, type=float)
     parser.add_argument('--lr_z', default=0.1, type=float)
     parser.add_argument('--lr_x', default=0.5, type=float)
-    parser.add_argument('--gpu_id', default='1,2,3,4', type=str)
+    parser.add_argument('--gpu_id', default='0,5,6,7', type=str)
     parser.add_argument('--patch_size', type=int, default=64)
     parser.add_argument('--backbone', type=str, default='googlenet')  # 'alexnet' 'shufflenetv2x1_0'
     parser.add_argument('--phase', type=str, default='OURS')

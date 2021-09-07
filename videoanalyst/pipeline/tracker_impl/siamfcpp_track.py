@@ -202,8 +202,15 @@ class SiamFCppTracker(PipelineBase):
             self.uap_root = os.path.join(sys.path[0], 'snapshots_imperceptible_patch/{}'.format(self.save_name))
             patch_x_path = os.path.join(self.uap_root, 'x_{}'.format(self.loop_num))
             uap_z_path = os.path.join(self.uap_root, 'z_{}'.format(self.loop_num))
-            self.patch_x = torch.load(patch_x_path, map_location='cpu')
-            self.uap_z = torch.load(uap_z_path, map_location='cpu')
+            self.patch_x_old = torch.load(patch_x_path, map_location='cpu')
+            self.uap_z_old = torch.load(uap_z_path, map_location='cpu')
+            mean_z = self.uap_z_old.mean()
+            std_z = self.uap_z_old.std()
+            mean_x = self.patch_x_old.mean()
+            std_x = self.patch_x_old.std()
+            print('mean_z={}, std_z={}, mean_x={}, std_x={}'.format(mean_z, std_z, mean_x, std_x))
+            self.uap_z = torch.normal(mean=mean_z, std=std_z, size=self.uap_z_old.shape)
+            self.patch_x = torch.normal(mean=mean_x, std=std_x, size=self.patch_x_old.shape)
             print('loading: ', patch_x_path, uap_z_path)
             """END：读入扰动"""
         else:
