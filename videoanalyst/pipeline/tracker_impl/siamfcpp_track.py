@@ -3,9 +3,9 @@ import sys
 from copy import deepcopy
 import os
 import numpy as np
-
+import cv2
 import torch
-
+import torch.nn.functional as F
 from videoanalyst.pipeline.pipeline_base import TRACK_PIPELINES, PipelineBase
 from videoanalyst.pipeline.utils import (cxywh2xywh, get_crop, xyxy2xywh,
                                          get_subwindow_tracking,
@@ -204,14 +204,36 @@ class SiamFCppTracker(PipelineBase):
             uap_z_path = os.path.join(self.uap_root, 'z_{}'.format(self.loop_num))
             self.patch_x_old = torch.load(patch_x_path, map_location='cpu')
             self.uap_z_old = torch.load(uap_z_path, map_location='cpu')
+
+            """方案1：加随机噪声
             mean_z = self.uap_z_old.mean()
             std_z = self.uap_z_old.std()
             mean_x = self.patch_x_old.mean()
             std_x = self.patch_x_old.std()
+            # mean_z = mean_x = 0.0
+            # std_z = std_x = 1.0
             print('mean_z={}, std_z={}, mean_x={}, std_x={}'.format(mean_z, std_z, mean_x, std_x))
-            self.uap_z = torch.normal(mean=mean_z, std=std_z, size=self.uap_z_old.shape)
-            self.patch_x = torch.normal(mean=mean_x, std=std_x, size=self.patch_x_old.shape)
+            self.uap_z = torch.normal(mean=mean_z, std=std_z, size=self.uap_z_old.shape) + self.uap_z_old
+            self.patch_x = torch.normal(mean=mean_x, std=std_x, size=self.patch_x_old.shape) + self.patch_x_old
+            """
+
+            """方案2：加篮球
+            pattern_image_path = '/home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/main/basketball1_adobespark.png'
+            pattern_image = cv2.imread(pattern_image_path)
+            pattern_image_x = cv2.resize(pattern_image, (64, 64))
+            pattern_image_z = cv2.resize(pattern_image, (64, 64))
+            self.uap_z = torch.zeros(size=self.uap_z_old.shape)
+            self.patch_x = torch.from_numpy(pattern_image_x.transpose((2, 0, 1))).unsqueeze(0).to(torch.float32) / 5
+            pattern_z = torch.from_numpy(pattern_image_z.transpose((2, 0, 1))).unsqueeze(0).to(torch.float32) / 5
+            self.uap_z[0, :, 32:96, 32:96] = pattern_z[0]
             print('loading: ', patch_x_path, uap_z_path)
+            """
+
+            """方案3：反转旋转"""
+            self.uap_z = torch.rot90(self.uap_z_old, 1, [2, 3])
+            self.patch_x = torch.rot90(self.patch_x_old, -1, [2, 3])
+            self.patch_x = torch.fliplr(self.patch_x)
+            self.uap_z = torch.flipud(self.uap_z)
             """END：读入扰动"""
         else:
             print('NO ATTACK')
