@@ -6,7 +6,6 @@ model_store
 *.swo
 *.pyc
 *.png
-*.jpg
 *.pkl
 core
 *.out
@@ -56,7 +55,6 @@ result
 *epoch*
 
 # input files
-*.jpg
 *.avi
 *.mp4
 
