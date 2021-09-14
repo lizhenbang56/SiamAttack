@@ -3,14 +3,31 @@ import sys
 from copy import deepcopy
 import os
 import numpy as np
-
+import cv2
 import torch
-
+from skimage.metrics import structural_similarity
 from videoanalyst.pipeline.pipeline_base import TRACK_PIPELINES, PipelineBase
 from videoanalyst.pipeline.utils import (cxywh2xywh, get_crop, xyxy2xywh,
                                          get_subwindow_tracking,
                                          imarray_to_tensor, tensor_to_numpy,
                                          xywh2cxywh, xyxy2cxywh, xyxy2xywh)
+
+
+def cal_SSIM(perturbation):
+    perturbation_numpy = perturbation[0].numpy().transpose((1, 2, 0))  # HWC
+    height, width, _ = perturbation_numpy.shape
+    if height == 64:
+        base_image_shape = (303, 303, 3)
+    else:
+        base_image_shape = (128, 128, 3)
+    base_image = 127.0 * np.ones(base_image_shape)
+    perturbed_image = base_image.copy()
+    perturbed_image[:height, :width] += perturbation_numpy
+    perturbed_image[perturbed_image > 255] = 255
+    perturbed_image[perturbed_image < 0] = 0
+    perturbed_image_numpy = perturbed_image.astype(np.uint8)
+    SSIM = structural_similarity(perturbed_image_numpy[:height, :width], base_image[:height, :width].astype(np.uint8), multichannel=True)
+    return SSIM, perturbed_image_numpy
 
 
 def _point_from_original_img_to_search_img(point_in_original_img,
@@ -204,15 +221,25 @@ class SiamFCppTracker(PipelineBase):
             uap_z_path = os.path.join(self.uap_root, 'z_{}'.format(self.loop_num))
             self.patch_x_old = torch.load(patch_x_path, map_location='cpu')
             self.uap_z_old = torch.load(uap_z_path, map_location='cpu')
-            mean_z = self.uap_z_old.mean()
-            std_z = self.uap_z_old.std()
-            mean_x = self.patch_x_old.mean()
-            std_x = self.patch_x_old.std()
+            mean_x = mean_z = 200.0
+            std_z = std_x = 200.0
             print('mean_z={}, std_z={}, mean_x={}, std_x={}'.format(mean_z, std_z, mean_x, std_x))
             self.uap_z = torch.normal(mean=mean_z, std=std_z, size=self.uap_z_old.shape)
             self.patch_x = torch.normal(mean=mean_x, std=std_x, size=self.patch_x_old.shape)
             print('loading: ', patch_x_path, uap_z_path)
             """END：读入扰动"""
+
+            """计算SSIM"""
+            SSIM_x, perturbed_image_numpy_x = cal_SSIM(self.patch_x)
+            SSIM_z, perturbed_image_numpy_z = cal_SSIM(self.uap_z)
+            perturbation_save_dir = os.path.join(sys.path[0], '实验结果_高斯噪声/mean={}_std={}'.format(mean_x, std_x))
+            if not os.path.exists(perturbation_save_dir):
+                os.makedirs(perturbation_save_dir)
+            perturbation_x_save_path = os.path.join(perturbation_save_dir, 'x_ssim={:.4f}.jpg'.format(SSIM_x))
+            perturbation_z_save_path = os.path.join(perturbation_save_dir, 'z_ssim={:.4f}.jpg'.format(SSIM_z))
+            assert cv2.imwrite(perturbation_x_save_path, perturbed_image_numpy_x)
+            assert cv2.imwrite(perturbation_z_save_path, perturbed_image_numpy_z)
+            """计算SSIM"""
         else:
             print('NO ATTACK')
 
