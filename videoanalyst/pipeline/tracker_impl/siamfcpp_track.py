@@ -3,7 +3,7 @@ import sys
 from copy import deepcopy
 import os
 import numpy as np
-
+import cv2
 import torch
 
 from videoanalyst.pipeline.pipeline_base import TRACK_PIPELINES, PipelineBase
@@ -200,10 +200,13 @@ class SiamFCppTracker(PipelineBase):
         if self.do_attack:
             """START：读入扰动"""
             self.uap_root = os.path.join(sys.path[0], 'snapshots_imperceptible_patch/{}'.format(self.save_name))
-            patch_x_path = os.path.join(self.uap_root, 'x_{}'.format(self.loop_num))
-            uap_z_path = os.path.join(self.uap_root, 'z_{}'.format(self.loop_num))
-            self.patch_x = torch.load(patch_x_path, map_location='cpu')
-            self.uap_z = torch.load(uap_z_path, map_location='cpu')
+            self.uap_root1 = sys.path[0]
+            patch_x_path = os.path.join(self.uap_root1, 'x_new.jpg')
+            uap_z_path = os.path.join(self.uap_root1, 'z_new.jpg')
+            x_np = cv2.imread(patch_x_path).astype(np.float32).transpose((2, 0, 1)) - 127.0
+            z_np = cv2.imread(uap_z_path).astype(np.float32).transpose((2, 0, 1)) - 127.0
+            self.patch_x = torch.from_numpy(x_np).unsqueeze(0)
+            self.uap_z = torch.from_numpy(z_np).unsqueeze(0)
             print('loading: ', patch_x_path, uap_z_path)
             """END：读入扰动"""
         else:
