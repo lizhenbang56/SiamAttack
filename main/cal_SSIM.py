@@ -13,14 +13,21 @@ def cal_SSIM(path_CbCr, path_Y):
     perturbation_shape = 64
 
     """读入基准图像"""
-    base = cv2.imread('/home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/snapshots_imperceptible_patch/64/visualization/512/GOT-10k_Val/GOT-10k_Val_000003/2_clean_search_img.jpg')
+    base_type = 'gray'  # 'gray' or 'image'
+    print('基底图像为{}'.format(base_type))
+    if base_type == 'image':
+        base = cv2.imread('/home/yyshi/zhbli/projects/Universal-Targeted-Attacks-for-Siamese-Visual-Tracking/snapshots_imperceptible_patch/64/visualization/512/GOT-10k_Val/GOT-10k_Val_000003/2_clean_search_img.jpg')
+    elif base_type == 'gray':
+        base = (127*np.ones((303, 303, 3))).astype(np.uint8)
+    else:
+        assert False
     """读入基准图像"""
 
     img = base.copy()
     bgr = torch.from_numpy(img.astype(np.float32)).permute(2, 0, 1).unsqueeze(0).to(torch.float32)
     ycbcr = bgr2ycbcr_pytorch(bgr)
-    delta_h = 0
-    delta_w = 0
+    delta_h = 120
+    delta_w = 120
     ycbcr[:, 0, :, :] += perturbation_Y[0, 0]
     ycbcr[:, 1:, delta_h:delta_h+perturbation_shape, delta_w:delta_w+perturbation_shape] += perturbation_CbCr[0]
     bgr1 = ycbcr2bgr_pytorch(ycbcr)
@@ -32,9 +39,19 @@ def cal_SSIM(path_CbCr, path_Y):
     ssim = structural_similarity(bgr1[delta_h:delta_h+perturbation_shape, delta_w:delta_w+perturbation_shape], 
                                  base[delta_h:delta_h+perturbation_shape, delta_w:delta_w+perturbation_shape], 
                                  multichannel=True)
+    ssim_303 = structural_similarity(bgr1, base, multichannel=True)
+
+    """计算补丁区域外的SSIM"""
+    bgr1_outside = bgr1.copy()
+    if base_type == 'gray':
+        bgr1_outside[delta_h:delta_h+perturbation_shape, delta_w:delta_w+perturbation_shape, :] = 127
+    ssim_outside = structural_similarity(bgr1_outside, base, multichannel=True)
+    """计算补丁区域外的SSIM"""
+
     cv2.imwrite('/tmp/base.jpg', base)
     cv2.imwrite('/tmp/ssim.jpg', bgr1)
-    print(ssim)
+    cv2.imwrite('/tmp/outside.jpg', bgr1_outside)
+    print('补丁区域外的SSIM={:.2f}, 整个搜索图像的SSIM={:.2f}'.format(ssim_outside, ssim_303))
 
 
 def main():
